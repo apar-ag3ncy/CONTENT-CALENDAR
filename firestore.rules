@@ -1,0 +1,14 @@
+rules_version = '2';
+
+// OPEN ACCESS — no login. Anyone with the app can read and write.
+// This matches the "open to all employees" decision. If you later want a gate,
+// add Firebase Auth and tighten these rules.
+//
+// Publish in: Firebase Console -> Firestore Database -> Rules -> Publish.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
