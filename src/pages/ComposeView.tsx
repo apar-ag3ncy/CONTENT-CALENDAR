@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ContentForm, type ContentFormValues } from '../components/ContentForm'
+import { Reveal } from '../components/Reveal'
 import type { ContentType } from '../types/database'
 import { useDayItems } from '../hooks/useDayData'
 import { useCategories } from '../hooks/useReferenceData'
@@ -71,7 +72,7 @@ export default function ComposeView() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="relative space-y-5">
       {/* Grainient hero */}
       <div className="grainient overflow-hidden rounded-3xl px-6 py-7 text-white shadow-[0_18px_40px_-18px_rgba(138,31,12,0.6)] sm:px-9 sm:py-9">
         <Link
@@ -92,14 +93,15 @@ export default function ComposeView() {
       </div>
 
       {!isFirebaseConfigured ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
+        <div className="mx-auto max-w-2xl rounded-2xl border border-flame-200/70 bg-flame-50/70 px-4 py-2.5 text-sm text-flame-800 backdrop-blur">
           ⚠️ Firebase isn&rsquo;t connected yet — you can fill this in, but it
           won&rsquo;t save until the database is set up.
         </div>
       ) : null}
 
-      {/* Form panel — padding matches ContentForm's sticky-footer bleed (-mx-5 -mb-4). */}
-      <div className="mx-auto max-w-2xl rounded-2xl border border-gray-200/80 bg-white px-5 pt-5 pb-4 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_14px_28px_-20px_rgba(16,24,40,0.16)]">
+      {/* Frosted form panel — soft white→warm glass; padding keeps ContentForm's -mx-5 -mb-4 footer bleed. */}
+      <Reveal>
+        <div className="glass-form mx-auto max-w-2xl px-5 pt-6 pb-4">
         {loadingEdit ? (
           <p className="py-10 text-center text-sm text-slate-400">Loading…</p>
         ) : isEdit && !editing ? (
@@ -128,7 +130,8 @@ export default function ComposeView() {
             onCancel={() => navigate(backTo)}
           />
         )}
-      </div>
+        </div>
+      </Reveal>
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { StaggerReveal } from '../components/Reveal'
 import { monthKey, formatMonthYear, toISODate } from '../lib/dates'
 
 function IconCalendar() {
@@ -89,7 +90,7 @@ export default function HomeView() {
       </section>
 
       {/* ── Quick-action glass cards ────────────────────────────────── */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <StaggerReveal className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {actions.map((a) => (
           <Link key={a.to} to={a.to} className="glass-add group p-6">
             <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white/70 text-brand-600 shadow-sm ring-1 ring-brand-100">
@@ -102,7 +103,7 @@ export default function HomeView() {
             </span>
           </Link>
         ))}
-      </div>
+      </StaggerReveal>
     </div>
   )
 }

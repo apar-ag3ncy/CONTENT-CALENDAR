@@ -220,7 +220,10 @@ export default function SettingsView() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold text-slate-900">Categories &amp; info</h1>
+      <div className="glass-head">
+        <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-white/70">Workspace</p>
+        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Categories &amp; info</h1>
+      </div>
 
       {!canEdit ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
@@ -235,7 +238,7 @@ export default function SettingsView() {
       ) : null}
 
       {/* Categories */}
-      <section className="card space-y-3">
+      <section className="glass-panel glass-orange space-y-3 p-5">
         <div>
           <h2 className="text-lg font-bold text-slate-900">Categories</h2>
           <p className="text-sm text-slate-500">
@@ -291,7 +294,7 @@ export default function SettingsView() {
       </section>
 
       {/* Team members */}
-      <section className="card space-y-3">
+      <section className="glass-panel glass-amber space-y-3 p-5">
         <div>
           <h2 className="text-lg font-bold text-slate-900">Team members</h2>
           <p className="text-sm text-slate-500">
@@ -340,7 +343,7 @@ export default function SettingsView() {
       </section>
 
       {/* Shared info note */}
-      <section id="info" className="card space-y-3 scroll-mt-20">
+      <section id="info" className="glass-panel glass-neutral space-y-3 p-5 scroll-mt-20">
         <div>
           <h2 className="text-lg font-bold text-slate-900">Team info</h2>
           <p className="text-sm text-slate-500">

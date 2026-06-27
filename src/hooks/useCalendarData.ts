@@ -4,6 +4,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../lib/firebase'
+import { DEMO_MODE, demoItemsInRange } from '../lib/demoData'
 import type { ContentItem, SpecialDay, PeriodLock } from '../types/database'
 
 const EMPTY: never[] = []
@@ -11,8 +12,8 @@ const EMPTY: never[] = []
 export function useContentItems(startISO: string, endISO: string) {
   return useQuery({
     queryKey: ['content_items', startISO, endISO],
-    enabled: isFirebaseConfigured,
     queryFn: async (): Promise<ContentItem[]> => {
+      if (DEMO_MODE) return demoItemsInRange(startISO, endISO)
       const snap = await getDocs(
         query(
           collection(db, 'content_items'),
@@ -47,8 +48,8 @@ export function useContentItems(startISO: string, endISO: string) {
 export function useSpecialDays(startISO: string, endISO: string) {
   return useQuery({
     queryKey: ['special_days', startISO, endISO],
-    enabled: isFirebaseConfigured,
     queryFn: async (): Promise<SpecialDay[]> => {
+      if (DEMO_MODE) return []
       const snap = await getDocs(
         query(
           collection(db, 'special_days'),
@@ -77,8 +78,8 @@ export function useSpecialDays(startISO: string, endISO: string) {
 export function usePeriodLocks(startISO: string, endISO: string) {
   return useQuery({
     queryKey: ['period_locks', startISO, endISO],
-    enabled: isFirebaseConfigured,
     queryFn: async (): Promise<PeriodLock[]> => {
+      if (DEMO_MODE) return []
       // Any lock that overlaps [startISO, endISO]. Firestore can't range two
       // fields, so filter start_date <= endISO in the query and end_date >=
       // startISO in JS.

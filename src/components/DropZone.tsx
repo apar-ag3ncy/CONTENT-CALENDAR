@@ -130,7 +130,7 @@ export function DropZone({
             return (
               <div
                 key={item.path}
-                className={`flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-2 shadow-[0_1px_2px_rgba(16,24,40,0.04)] ${
+                className={`flex items-center gap-3 rounded-xl border border-white/70 bg-white/60 p-2 shadow-[0_1px_2px_rgba(16,24,40,0.04)] backdrop-blur ${
                   multiple ? 'w-full max-w-xs' : ''
                 }`}
               >
@@ -141,7 +141,7 @@ export function DropZone({
                     className="h-14 w-14 flex-none rounded-lg object-cover"
                   />
                 ) : (
-                  <div className="grid h-14 w-14 flex-none place-items-center rounded-lg bg-slate-100 text-slate-400">
+                  <div className="grid h-14 w-14 flex-none place-items-center rounded-lg bg-white/70 text-flame-500">
                     <IconFilm />
                   </div>
                 )}
@@ -183,17 +183,17 @@ export function DropZone({
         }}
         onDragLeave={() => setDragOver(false)}
         onDrop={onDrop}
-        className={`flex w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed px-4 py-8 text-center transition ${
+        className={`flex w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed px-4 py-8 text-center backdrop-blur transition ${
           dragOver
-            ? 'border-brand-400 bg-brand-50'
-            : 'border-slate-200 bg-slate-50/60 hover:border-brand-300 hover:bg-brand-50/40'
+            ? 'border-brand-400 bg-brand-50/70'
+            : 'border-flame-200/70 bg-white/45 hover:border-brand-300 hover:bg-flame-50/50'
         } disabled:cursor-not-allowed disabled:opacity-60`}
       >
         <span
           className={`grid h-11 w-11 place-items-center rounded-full shadow-sm ring-1 transition ${
             dragOver
               ? 'bg-brand-100 text-brand-600 ring-brand-100'
-              : 'bg-white text-slate-400 ring-slate-100'
+              : 'bg-white/80 text-flame-500 ring-white/70'
           }`}
           aria-hidden
         >

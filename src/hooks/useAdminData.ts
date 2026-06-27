@@ -2,13 +2,14 @@
 import { useQuery } from '@tanstack/react-query'
 import { collection, doc, getDoc, getDocs } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../lib/firebase'
+import { DEMO_MODE, demoGridItems } from '../lib/demoData'
 import type { AppInfo, ContentItem, TeamMember } from '../types/database'
 
 export function useTeamMembers() {
   return useQuery({
     queryKey: ['team_members'],
-    enabled: isFirebaseConfigured,
     queryFn: async (): Promise<TeamMember[]> => {
+      if (DEMO_MODE) return []
       const snap = await getDocs(collection(db, 'team_members'))
       const members = snap.docs.map(
         (d) =>
@@ -28,8 +29,8 @@ export function useTeamMembers() {
 export function useAppInfo() {
   return useQuery({
     queryKey: ['app_info'],
-    enabled: isFirebaseConfigured,
     queryFn: async (): Promise<AppInfo | null> => {
+      if (DEMO_MODE) return null
       const snap = await getDoc(doc(db, 'app_info', 'main'))
       return snap.exists()
         ? ({ id: 'main', ...(snap.data() as Record<string, unknown>) } as AppInfo)
@@ -42,8 +43,8 @@ export function useAppInfo() {
 export function useGridItems() {
   return useQuery({
     queryKey: ['grid_items'],
-    enabled: isFirebaseConfigured,
     queryFn: async (): Promise<ContentItem[]> => {
+      if (DEMO_MODE) return demoGridItems()
       const snap = await getDocs(collection(db, 'content_items'))
       const items = snap.docs
         .map(

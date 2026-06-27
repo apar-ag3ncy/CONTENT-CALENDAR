@@ -129,6 +129,7 @@ export default function WeekView() {
     <div className="space-y-4">
       <CalendarToolbar
         view="week"
+        hero
         title={formatWeekRange(monday)}
         subtitle={isFetching ? 'Updating…' : 'Week view'}
         prevTo={`/week/${toISODate(addDays(monday, -7))}`}

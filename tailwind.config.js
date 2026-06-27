@@ -37,9 +37,26 @@ export default {
         ink: '#21130F', // near-black warm brown
         // Shading for festivals / holidays / special days.
         special: '#FBDDD4',
+        // Deep bottle-green editorial palette (the "ZYRA" grid-review aesthetic).
+        forest: {
+          50: '#EEF3F0',
+          100: '#D5E1DB',
+          200: '#A9C0B5',
+          300: '#7C9C8C',
+          400: '#517763',
+          500: '#315845',
+          600: '#214034', // primary panel green
+          700: '#1A3329',
+          800: '#13261E',
+          900: '#0D1B15',
+          DEFAULT: '#214034',
+        },
+        // Soft champagne-gold hairline accent for the editorial frames.
+        champagne: '#C9B68C',
       },
       fontFamily: {
         sans: [
+          'Outfit',
           'ui-sans-serif',
           'system-ui',
           '-apple-system',
@@ -49,6 +66,7 @@ export default {
           'Arial',
           'sans-serif',
         ],
+        serif: ['"Playfair Display"', 'Georgia', 'Cambria', 'serif'],
       },
     },
   },

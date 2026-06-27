@@ -103,7 +103,7 @@ const TYPE_ICONS: Record<ContentType, () => JSX.Element> = {
 }
 
 const inputCls =
-  'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 transition placeholder:text-slate-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100'
+  'glass-field w-full rounded-xl border px-3.5 py-2.5 text-sm text-slate-800 transition placeholder:text-slate-500 focus:border-brand-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-100'
 
 function Segmented<T extends string>({
   value,
@@ -127,7 +127,7 @@ function Segmented<T extends string>({
           className={`rounded-xl border px-3.5 py-2 text-sm font-semibold transition ${
             value === o.value
               ? 'border-brand-600 bg-brand-600 text-white shadow-sm'
-              : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+              : 'border-white/70 bg-white/50 text-slate-600 backdrop-blur hover:bg-white/80'
           }`}
         >
           {o.label}
@@ -158,7 +158,7 @@ function TypeTabs({
             className={`flex flex-col items-center justify-center gap-1.5 rounded-2xl border px-2 py-3 text-xs font-semibold transition ${
               active
                 ? 'border-brand-600 bg-brand-600 text-white shadow-[0_8px_20px_-10px_rgba(214,46,20,0.7)]'
-                : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:bg-slate-50'
+                : 'border-white/70 bg-white/55 text-slate-500 backdrop-blur hover:border-flame-200 hover:bg-white/80'
             }`}
           >
             <span className={active ? 'text-white' : 'text-slate-400'}>
@@ -182,10 +182,10 @@ function Section({
   return (
     <section className="space-y-4">
       <div className="flex items-center gap-3">
-        <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">
+        <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-flame-700/80">
           {eyebrow}
         </span>
-        <span className="h-px flex-1 bg-slate-100" />
+        <span className="h-px flex-1 bg-gradient-to-r from-flame-200/60 to-transparent" />
       </div>
       {children}
     </section>
@@ -312,7 +312,7 @@ export function ContentForm({
     : `Add ${CONTENT_TYPE_META[type].label}`
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-7">
       {/* ── Type & format ────────────────────────────── */}
       <Section eyebrow="Type & format">
         <TypeTabs value={type} onChange={handleType} />
@@ -474,24 +474,24 @@ export function ContentForm({
       </Section>
 
       {errorMessage ? (
-        <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p className="rounded-xl border border-brand-200/60 bg-brand-50/80 px-3 py-2 text-sm text-brand-800 backdrop-blur">
           {errorMessage}
         </p>
       ) : null}
 
-      {/* ── Sticky footer action bar (bleeds to panel edges) ── */}
-      <div className="sticky bottom-0 -mx-5 -mb-4 mt-2 flex items-center justify-end gap-2 border-t border-slate-100 bg-white/95 px-5 py-3.5 backdrop-blur">
+      {/* ── Sticky footer action bar — buttons mirror the Home hero (white pill + glass ghost) ── */}
+      <div className="sticky bottom-0 -mx-5 -mb-4 mt-2 flex items-center justify-end gap-2.5 rounded-b-3xl border-t border-white/60 bg-white/55 px-5 py-3.5 backdrop-blur-xl">
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-700"
+          className="inline-flex items-center gap-2 rounded-xl bg-white/[0.55] px-5 py-2.5 text-sm font-semibold text-slate-700 ring-1 ring-white/70 backdrop-blur transition hover:bg-white/80 active:scale-[.98]"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={saving}
-          className="btn-primary px-5 py-2.5 text-sm disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-brand-700 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.5)] transition hover:bg-cream active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {!saving ? (existing ? <IconCheck /> : <IconPlus />) : null}
           {saving ? 'Saving…' : submitLabel}

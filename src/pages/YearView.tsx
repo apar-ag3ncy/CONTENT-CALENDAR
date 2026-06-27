@@ -50,6 +50,7 @@ export default function YearView() {
   }
 
   const refDate = year === now.getFullYear() ? now : new Date(year, 0, 1)
+  const SHADES = ['glass-orange', 'glass-amber', 'glass-red', 'glass-neutral'] as const
 
   if (paramInvalid) {
     return <Navigate to={`/year/${now.getFullYear()}`} replace />
@@ -59,6 +60,7 @@ export default function YearView() {
     <div className="space-y-4">
       <CalendarToolbar
         view="year"
+        hero
         title={String(year)}
         subtitle={itemsQ.isFetching ? 'Updating…' : 'Year overview'}
         prevTo={`/year/${year - 1}`}
@@ -77,8 +79,8 @@ export default function YearView() {
             <Link
               key={month0}
               to={`/month/${monthKey(new Date(year, month0, 1))}`}
-              className={`flex flex-col gap-2 rounded-2xl border bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md ${
-                isCurrent ? 'border-brand-400 ring-1 ring-brand-300' : 'border-slate-200'
+              className={`glass-panel is-interactive ${SHADES[month0 % 4]} flex flex-col gap-2 p-4 ${
+                isCurrent ? 'ring-2 ring-brand-400' : ''
               }`}
             >
               <div className="flex items-center justify-between">

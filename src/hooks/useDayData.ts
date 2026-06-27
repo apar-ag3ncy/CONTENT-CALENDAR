@@ -2,13 +2,14 @@
 import { useQuery } from '@tanstack/react-query'
 import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../lib/firebase'
+import { DEMO_MODE, demoItemsForDate } from '../lib/demoData'
 import type { ContentItem, DayNote } from '../types/database'
 
 export function useDayItems(dateISO: string) {
   return useQuery({
     queryKey: ['day_items', dateISO],
-    enabled: isFirebaseConfigured,
     queryFn: async (): Promise<ContentItem[]> => {
+      if (DEMO_MODE) return demoItemsForDate(dateISO)
       const snap = await getDocs(
         query(collection(db, 'content_items'), where('date', '==', dateISO)),
       )
@@ -38,8 +39,8 @@ export function useDayItems(dateISO: string) {
 export function useDayNote(dateISO: string) {
   return useQuery({
     queryKey: ['day_note', dateISO],
-    enabled: isFirebaseConfigured,
     queryFn: async (): Promise<DayNote | null> => {
+      if (DEMO_MODE) return null
       const snap = await getDoc(doc(db, 'day_notes', dateISO))
       return snap.exists()
         ? ({ date: dateISO, ...(snap.data() as Record<string, unknown>) } as DayNote)

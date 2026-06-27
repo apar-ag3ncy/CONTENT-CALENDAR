@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { gsap, ScrollTrigger, prefersReducedMotion } from '../lib/motion'
 import {
   WEEKDAY_SHORT,
   daysInMonth,
@@ -37,6 +38,67 @@ function IconBell() {
     </svg>
   )
 }
+function IconInstagram({ className = 'h-5 w-5' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="5.2" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
+/** Sidebar entry point to the Instagram-style Grid Review page. */
+function GridReviewLink({
+  collapsed = false,
+  onNavigate,
+}: {
+  collapsed?: boolean
+  onNavigate?: () => void
+}) {
+  const { pathname } = useLocation()
+  const active = pathname === '/grid'
+
+  if (collapsed) {
+    return (
+      <Link
+        to="/grid"
+        onClick={onNavigate}
+        title="Grid Review"
+        aria-label="Grid Review"
+        aria-current={active ? 'page' : undefined}
+        className={`mx-auto grid h-11 w-12 place-items-center rounded-xl transition ${
+          active ? 'bg-forest-600 text-white' : 'text-forest-700 hover:bg-forest-50'
+        }`}
+      >
+        <IconInstagram />
+      </Link>
+    )
+  }
+
+  return (
+    <Link
+      to="/grid"
+      onClick={onNavigate}
+      aria-current={active ? 'page' : undefined}
+      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition ${
+        active
+          ? 'bg-forest-600 text-white shadow-[0_8px_20px_-10px_rgba(33,64,52,0.8)]'
+          : 'bg-forest-50 text-forest-800 hover:bg-forest-100'
+      }`}
+    >
+      <span className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-gradient-to-tr from-[#f9ce34] via-[#ee2a7b] to-[#6228d7] text-white shadow-sm">
+        <IconInstagram className="h-[18px] w-[18px]" />
+      </span>
+      <span className="flex flex-col leading-tight">
+        <span className="text-sm font-bold">Grid Review</span>
+        <span className={`text-[11px] ${active ? 'text-white/75' : 'text-forest-500'}`}>
+          Instagram feed preview
+        </span>
+      </span>
+    </Link>
+  )
+}
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
 
@@ -70,6 +132,7 @@ function CalendarNav({
 
   // The Jan–Dec list is hidden until you open the picker to change months.
   const [menuOpen, setMenuOpen] = useState(false)
+  const [weeksOpen, setWeeksOpen] = useState(false)
   const [pickYear, setPickYear] = useState(year)
   useEffect(() => setPickYear(year), [year])
 
@@ -176,34 +239,65 @@ function CalendarNav({
         ) : null}
       </div>
 
-      {/* ── Weeks of the month ── */}
+      {/* ── Weeks picker — active week on top; list pops only to switch ── */}
       <div>
         <div className="mb-2 flex items-center gap-3 px-1">
           <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">Weeks</span>
           <span className="h-px flex-1 bg-slate-100" />
         </div>
-        <nav aria-label="Weeks" className="flex flex-col gap-1">
-          {weeks.map((w, i) => {
-            const active = i === activeWeekIdx
-            const firstISO = toISODate(new Date(year, month0, w.start))
-            return (
-              <Link
-                key={w.n}
-                to={`/month/${mk}?d=${firstISO}`}
-                onClick={onNavigate}
-                aria-current={active ? 'true' : undefined}
-                className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm transition ${
-                  active ? 'bg-brand-50 font-semibold text-brand-700 ring-1 ring-brand-100' : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                <span>Week {w.n}</span>
-                <span className={`text-xs ${active ? 'text-brand-500' : 'text-slate-400'}`}>
-                  {monthShort} {w.start}–{w.end}
-                </span>
-              </Link>
-            )
-          })}
-        </nav>
+
+        <button
+          type="button"
+          onClick={() => setWeeksOpen((o) => !o)}
+          aria-expanded={weeksOpen}
+          className="flex w-full items-center justify-between rounded-xl bg-brand-600 px-3.5 py-2.5 text-left text-white shadow-[0_8px_20px_-10px_rgba(214,46,20,0.7)] transition hover:bg-brand-700"
+        >
+          <span className="flex items-baseline gap-2">
+            <span className="text-sm font-bold">Week {activeWeek.n}</span>
+            <span className="text-xs font-medium text-white/70">
+              {monthShort} {activeWeek.start}–{activeWeek.end}
+            </span>
+          </span>
+          <svg
+            className={`h-4 w-4 transition-transform ${weeksOpen ? 'rotate-180' : ''}`}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </button>
+
+        {weeksOpen ? (
+          <nav aria-label="Weeks" className="mt-2 flex flex-col gap-1 rounded-xl border border-gray-200 bg-white p-2 shadow-sm">
+            {weeks.map((w, i) => {
+              const active = i === activeWeekIdx
+              const firstISO = toISODate(new Date(year, month0, w.start))
+              return (
+                <Link
+                  key={w.n}
+                  to={`/month/${mk}?d=${firstISO}`}
+                  onClick={() => {
+                    setWeeksOpen(false)
+                    onNavigate?.()
+                  }}
+                  aria-current={active ? 'true' : undefined}
+                  className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm transition ${
+                    active ? 'bg-brand-50 font-semibold text-brand-700 ring-1 ring-brand-100' : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  <span>Week {w.n}</span>
+                  <span className={`text-xs ${active ? 'text-brand-500' : 'text-slate-400'}`}>
+                    {monthShort} {w.start}–{w.end}
+                  </span>
+                </Link>
+              )
+            })}
+          </nav>
+        ) : null}
       </div>
 
       {/* ── Days of the active week (calm gradient pills) ── */}
@@ -360,6 +454,19 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false)
   const drawerRef = useDialog(drawerOpen, () => setDrawerOpen(false))
 
+  const { pathname } = useLocation()
+  useEffect(() => {
+    // New page: scroll to top (smooth unless reduced-motion), then re-measure triggers.
+    if (prefersReducedMotion()) {
+      window.scrollTo(0, 0)
+    } else {
+      gsap.to(window, { duration: 0.5, scrollTo: { y: 0 }, ease: 'power2.out' })
+    }
+    // Defer refresh until after the new route paints so start/end positions are correct.
+    const id = requestAnimationFrame(() => ScrollTrigger.refresh())
+    return () => cancelAnimationFrame(id)
+  }, [pathname])
+
   return (
     <div className="min-h-screen">
       {/* Desktop sidebar — collapses to an icon rail */}
@@ -372,6 +479,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Brand collapsed={collapsed} />
         </div>
         <div className={`flex-1 overflow-y-auto py-5 ${collapsed ? 'px-2' : 'px-4'}`}>
+          <div className={collapsed ? 'mb-4' : 'mb-5'}>
+            <GridReviewLink collapsed={collapsed} />
+          </div>
           <CalendarNav collapsed={collapsed} />
         </div>
       </aside>
@@ -400,6 +510,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto px-4 py-5">
+              <div className="mb-5">
+                <GridReviewLink onNavigate={() => setDrawerOpen(false)} />
+              </div>
               <CalendarNav onNavigate={() => setDrawerOpen(false)} />
             </div>
           </div>
