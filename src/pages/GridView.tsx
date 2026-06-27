@@ -295,7 +295,7 @@ function FeedItemCard({ item }: { item: ContentItem }) {
             ))}
           </div>
         ) : vid ? (
-          <div className="relative mx-auto aspect-[9/16] max-h-[26rem] overflow-hidden">
+          <div className="relative mx-auto aspect-[9/16] w-full max-w-[15rem] overflow-hidden sm:max-w-[19rem]">
             <VideoThumb src={vid.url} />
           </div>
         ) : (
