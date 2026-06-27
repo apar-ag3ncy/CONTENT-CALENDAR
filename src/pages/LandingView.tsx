@@ -4,20 +4,25 @@ import { monthKey } from '../lib/dates'
 const GRAIN =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")"
 
-const NAV = ['Home', 'Private Key', 'Product', 'Solution', 'Pricing', 'Community']
-
-/** Floating circuit-node labels, positioned like the reference. */
+/** Floating circuit-node labels — content-calendar themed. */
 const LABELS = [
-  { t: 'Local HUB', x: '75%', y: '30%' },
-  { t: 'Encrypted', x: '30%', y: '47%' },
-  { t: 'Center HUB', x: '63%', y: '57%' },
-  { t: 'Light speed', x: '33%', y: '63%' },
-  { t: 'Secured', x: '8%', y: '64%' },
-  { t: 'System', x: '63%', y: '80%' },
+  { t: 'Posts', x: '75%', y: '30%' },
+  { t: 'Reels', x: '30%', y: '47%' },
+  { t: 'Calendar', x: '63%', y: '57%' },
+  { t: 'Stories', x: '33%', y: '63%' },
+  { t: 'Plan', x: '8%', y: '64%' },
+  { t: 'Schedule', x: '63%', y: '80%' },
 ]
 
 export default function LandingView() {
   const monthHref = `/month/${monthKey(new Date())}`
+  const NAV = [
+    { label: 'Home', href: '/' },
+    { label: 'Calendar', href: monthHref },
+    { label: 'Grid Review', href: '/grid' },
+    { label: 'Year', href: '/year' },
+    { label: 'Info', href: '/settings' },
+  ]
 
   return (
     <div className="relative isolate flex min-h-screen w-full flex-col overflow-hidden bg-[#0a0604] text-white">
@@ -142,19 +147,19 @@ export default function LandingView() {
                 'radial-gradient(circle at 36% 30%, #ffcf8f, #f16001 52%, #2a0f06 90%)',
             }}
           />
-          <span className="text-[17px] font-semibold tracking-tight">Recognito.</span>
+          <span className="text-[17px] font-semibold tracking-tight">Chheda&rsquo;s × Apar</span>
         </div>
 
         <nav className="hidden items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1 text-sm lg:flex">
           {NAV.map((n, i) => (
             <Link
-              key={n}
-              to={i === 0 ? '/' : monthHref}
+              key={n.label}
+              to={n.href}
               className={`rounded-full px-3.5 py-1.5 transition ${
                 i === 0 ? 'bg-white/10 text-white' : 'text-white/55 hover:text-white'
               }`}
             >
-              {n}
+              {n.label}
             </Link>
           ))}
         </nav>
@@ -163,7 +168,7 @@ export default function LandingView() {
           to={monthHref}
           className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-[#0a0604] transition hover:bg-cream active:scale-[.98]"
         >
-          Join Beta
+          Calendar
         </Link>
       </header>
 
@@ -175,18 +180,18 @@ export default function LandingView() {
           style={{ animationDelay: '0.1s' }}
         >
           <span className="rounded-full bg-gradient-to-r from-flame-400 to-brand-600 px-2.5 py-1 font-semibold text-white">
-            Get early access
+            Internal
           </span>
-          <span className="text-white/60">web3.0 beta</span>
+          <span className="text-white/60">content calendar</span>
         </div>
 
         {/* headline — medium weight, like the reference */}
         <h1 className="mt-7 text-balance text-4xl font-medium leading-[1.1] tracking-tight sm:text-5xl lg:text-[58px]">
           <span className="landing-in block" style={{ animationDelay: '0.2s' }}>
-            Meet! Recognito
+            Chheda&rsquo;s × Apar
           </span>
           <span className="landing-in block" style={{ animationDelay: '0.3s' }}>
-            Built for a secure Web3 future.
+            The team&rsquo;s content calendar.
           </span>
         </h1>
 
@@ -195,8 +200,8 @@ export default function LandingView() {
           className="landing-in mt-5 max-w-md text-sm leading-relaxed text-white/55"
           style={{ animationDelay: '0.44s' }}
         >
-          Empowering blockchain networks with top-tier validation, RPC, and IBC
-          relayers—built for decentralized scale.
+          Plan every post, reel and story in one shared calendar — create,
+          review the grid, and schedule it all in one place.
         </p>
 
         {/* buttons */}
@@ -206,14 +211,14 @@ export default function LandingView() {
             className="landing-in rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#0a0604] shadow-[0_14px_40px_-14px_rgba(255,255,255,0.5)] transition hover:bg-cream active:scale-[.98]"
             style={{ animationDelay: '0.54s' }}
           >
-            Apply for Beta
+            Open Calendar
           </Link>
           <Link
             to="/grid"
             className="landing-in rounded-full border border-white/15 bg-white/[0.05] px-6 py-3 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/10 active:scale-[.98]"
             style={{ animationDelay: '0.62s' }}
           >
-            Learn more
+            Grid Review
           </Link>
         </div>
       </main>
