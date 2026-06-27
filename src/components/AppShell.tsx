@@ -1,6 +1,15 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { monthKey } from '../lib/dates'
+import {
+  WEEKDAY_SHORT,
+  daysInMonth,
+  isToday,
+  monthKey,
+  parseISODate,
+  toISODate,
+  weekdayMonFirst,
+} from '../lib/dates'
+import { selectedDateFor } from './MonthIndex'
 import { isFirebaseConfigured } from '../lib/firebase'
 import { useDialog } from '../hooks/useDialog'
 
@@ -29,32 +38,62 @@ function IconBell() {
   )
 }
 
-/** The sidebar index: just the 12 months, to hop from one month to another. */
-function MonthList({
+const pad2 = (n: number) => String(n).padStart(2, '0')
+
+/**
+ * The systematic sidebar index: a collapsible Month picker (the active month
+ * stays on top; the Jan–Dec list only pops open when you go to switch), then
+ * the month's Weeks as options (1–7, 8–14, …), then the days of the active week
+ * as calm gradient pills. No constant re-popping.
+ */
+function CalendarNav({
   onNavigate,
   collapsed = false,
 }: {
   onNavigate?: () => void
   collapsed?: boolean
 }) {
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   const now = new Date()
   const match = pathname.match(/^\/month\/(\d{4})-(\d{2})/)
-  const routeYear = match ? Number(match[1]) : now.getFullYear()
-  const activeKey = match ? `${match[1]}-${match[2]}` : null
+  const onMonthRoute = Boolean(match)
+  const year = match ? Number(match[1]) : now.getFullYear()
+  const month0 = match ? Number(match[2]) - 1 : now.getMonth()
+  const mk = `${year}-${pad2(month0 + 1)}`
   const currentKey = monthKey(now)
-  const [year, setYear] = useState(routeYear)
-  // Follow the route's year when you navigate.
-  useEffect(() => setYear(routeYear), [routeYear])
+  const monthLong = new Date(year, month0, 1).toLocaleDateString('en-US', { month: 'long' })
+  const monthShort = new Date(year, month0, 1).toLocaleDateString('en-US', { month: 'short' })
+
+  const selectedISO =
+    selectedDateFor(mk, search, now) ?? toISODate(new Date(year, month0, 1))
+  const selectedDay = parseISODate(selectedISO).getDate()
+
+  // The Jan–Dec list is hidden until you open the picker to change months.
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [pickYear, setPickYear] = useState(year)
+  useEffect(() => setPickYear(year), [year])
+
+  // Weeks = systematic 7-day chunks of the month (1–7, 8–14, …).
+  const dim = daysInMonth(year, month0)
+  const weeks: { n: number; start: number; end: number }[] = []
+  for (let s = 1; s <= dim; s += 7) {
+    weeks.push({ n: weeks.length + 1, start: s, end: Math.min(s + 6, dim) })
+  }
+  const activeWeekIdx = Math.min(Math.floor((selectedDay - 1) / 7), weeks.length - 1)
+  const activeWeek = weeks[activeWeekIdx]
+  const weekDays = Array.from(
+    { length: activeWeek.end - activeWeek.start + 1 },
+    (_, i) => new Date(year, month0, activeWeek.start + i),
+  )
 
   if (collapsed) {
     return (
       <nav aria-label="Months" className="flex flex-col items-center gap-1">
         {Array.from({ length: 12 }, (_, m) => {
-          const key = `${routeYear}-${String(m + 1).padStart(2, '0')}`
-          const label = new Date(routeYear, m, 1).toLocaleDateString('en-US', { month: 'short' })
-          const active = key === activeKey
+          const key = `${year}-${pad2(m + 1)}`
+          const active = onMonthRoute && m === month0
           const current = key === currentKey
+          const label = new Date(year, m, 1).toLocaleDateString('en-US', { month: 'short' })
           return (
             <Link
               key={m}
@@ -74,49 +113,169 @@ function MonthList({
   }
 
   return (
-    <div>
-      <div className="mb-2 flex items-center justify-between px-1">
-        <button type="button" aria-label="Previous year" onClick={() => setYear((y) => y - 1)} className="grid h-7 w-7 place-items-center rounded-lg text-gray-500 transition hover:bg-gray-100">
-          ‹
+    <div className="space-y-5">
+      {/* ── Month picker — active month on top; list pops only to switch ── */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setMenuOpen((o) => !o)}
+          aria-expanded={menuOpen}
+          className="flex w-full items-center justify-between rounded-xl bg-brand-600 px-3.5 py-2.5 text-left text-white shadow-[0_8px_20px_-10px_rgba(214,46,20,0.7)] transition hover:bg-brand-700"
+        >
+          <span className="text-sm font-bold">
+            {monthLong} {year}
+          </span>
+          <svg
+            className={`h-4 w-4 transition-transform ${menuOpen ? 'rotate-180' : ''}`}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="m6 9 6 6 6-6" />
+          </svg>
         </button>
-        <span className="text-sm font-bold text-gray-900">{year}</span>
-        <button type="button" aria-label="Next year" onClick={() => setYear((y) => y + 1)} className="grid h-7 w-7 place-items-center rounded-lg text-gray-500 transition hover:bg-gray-100">
-          ›
-        </button>
+
+        {menuOpen ? (
+          <div className="mt-2 rounded-xl border border-gray-200 bg-white p-2 shadow-sm">
+            <div className="mb-1.5 flex items-center justify-between px-1">
+              <button type="button" aria-label="Previous year" onClick={() => setPickYear((y) => y - 1)} className="grid h-7 w-7 place-items-center rounded-lg text-gray-500 hover:bg-gray-100">
+                ‹
+              </button>
+              <span className="text-sm font-bold text-gray-900">{pickYear}</span>
+              <button type="button" aria-label="Next year" onClick={() => setPickYear((y) => y + 1)} className="grid h-7 w-7 place-items-center rounded-lg text-gray-500 hover:bg-gray-100">
+                ›
+              </button>
+            </div>
+            <div className="grid grid-cols-3 gap-1">
+              {Array.from({ length: 12 }, (_, m) => {
+                const key = `${pickYear}-${pad2(m + 1)}`
+                const active = onMonthRoute && pickYear === year && m === month0
+                const current = key === currentKey
+                const label = new Date(pickYear, m, 1).toLocaleDateString('en-US', { month: 'short' })
+                return (
+                  <Link
+                    key={m}
+                    to={`/month/${key}`}
+                    onClick={() => {
+                      setMenuOpen(false)
+                      onNavigate?.()
+                    }}
+                    className={`rounded-lg py-1.5 text-center text-xs font-semibold transition ${
+                      active ? 'bg-brand-600 text-white' : current ? 'bg-brand-50 text-brand-700' : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    {label}
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        ) : null}
       </div>
-      <nav aria-label="Months" className="flex flex-col gap-1">
-        {Array.from({ length: 12 }, (_, m) => {
-          const key = `${year}-${String(m + 1).padStart(2, '0')}`
-          const label = new Date(year, m, 1).toLocaleDateString('en-US', { month: 'long' })
-          const active = key === activeKey
-          const current = key === currentKey
-          return (
-            <Link
-              key={m}
-              to={`/month/${key}`}
-              onClick={onNavigate}
-              aria-current={active ? 'page' : undefined}
-              className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition ${
-                active ? 'bg-brand-600 text-white' : current ? 'text-brand-700 hover:bg-brand-50' : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              {label}
-              {current && !active ? <span className="text-[10px] font-bold text-brand-500">Now</span> : null}
-            </Link>
-          )
-        })}
-      </nav>
+
+      {/* ── Weeks of the month ── */}
+      <div>
+        <div className="mb-2 flex items-center gap-3 px-1">
+          <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">Weeks</span>
+          <span className="h-px flex-1 bg-slate-100" />
+        </div>
+        <nav aria-label="Weeks" className="flex flex-col gap-1">
+          {weeks.map((w, i) => {
+            const active = i === activeWeekIdx
+            const firstISO = toISODate(new Date(year, month0, w.start))
+            return (
+              <Link
+                key={w.n}
+                to={`/month/${mk}?d=${firstISO}`}
+                onClick={onNavigate}
+                aria-current={active ? 'true' : undefined}
+                className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm transition ${
+                  active ? 'bg-brand-50 font-semibold text-brand-700 ring-1 ring-brand-100' : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <span>Week {w.n}</span>
+                <span className={`text-xs ${active ? 'text-brand-500' : 'text-slate-400'}`}>
+                  {monthShort} {w.start}–{w.end}
+                </span>
+              </Link>
+            )
+          })}
+        </nav>
+      </div>
+
+      {/* ── Days of the active week (calm gradient pills) ── */}
+      <div>
+        <div className="mb-2 flex items-center gap-3 px-1">
+          <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">
+            {monthShort} {activeWeek.start}–{activeWeek.end}
+          </span>
+          <span className="h-px flex-1 bg-slate-100" />
+        </div>
+        <nav aria-label="Days" className="relative flex flex-col px-0.5">
+          {weekDays.map((date, i) => {
+            const iso = toISODate(date)
+            const active = selectedISO === iso
+            const today = isToday(date, now)
+            const s = dayPillStyle(weekDays.length > 1 ? i / (weekDays.length - 1) : 0)
+            return (
+              <Link
+                key={iso}
+                to={`/month/${mk}?d=${iso}`}
+                onClick={onNavigate}
+                aria-current={active ? 'date' : undefined}
+                style={{
+                  backgroundColor: s.backgroundColor,
+                  color: s.color,
+                  marginTop: i === 0 ? 0 : -8,
+                  zIndex: active ? 60 : i + 1,
+                  boxShadow: active
+                    ? `inset 0 0 0 2px ${s.color}, 0 10px 22px -6px rgba(92, 20, 16, 0.55)`
+                    : '0 4px 10px -5px rgba(99, 29, 16, 0.5)',
+                }}
+                className={`relative flex items-center gap-2.5 rounded-full px-4 py-2.5 transition-transform ${
+                  active ? 'scale-[1.04] font-extrabold' : 'hover:translate-x-0.5'
+                }`}
+              >
+                <span className="w-9 flex-none text-[10px] font-bold uppercase tracking-wide opacity-70">
+                  {WEEKDAY_SHORT[weekdayMonFirst(date)]}
+                </span>
+                <span className="tabular-nums text-sm font-bold">{date.getDate()}</span>
+                {today ? (
+                  <span aria-hidden title="Today" className="ml-auto h-2 w-2 rounded-full" style={{ backgroundColor: s.color }} />
+                ) : null}
+              </Link>
+            )
+          })}
+        </nav>
+      </div>
     </div>
   )
+}
+
+/** Dark→light APAR-red ramp for the stacked day pills (top dark, bottom light). */
+function dayPillStyle(t: number): { backgroundColor: string; color: string } {
+  const top = [0x6b, 0x1a, 0x10] // deep brand red
+  const bot = [0xfb, 0xdd, 0xd4] // brand-100, almost blush
+  const r = Math.round(top[0] + (bot[0] - top[0]) * t)
+  const g = Math.round(top[1] + (bot[1] - top[1]) * t)
+  const b = Math.round(top[2] + (bot[2] - top[2]) * t)
+  const lum = 0.299 * r + 0.587 * g + 0.114 * b
+  return {
+    backgroundColor: `rgb(${r}, ${g}, ${b})`,
+    color: lum > 150 ? '#5c1410' : '#ffffff',
+  }
 }
 
 function Brand({ collapsed = false }: { collapsed?: boolean }) {
   return (
     <Link
-      to={`/month/${monthKey(new Date())}`}
+      to="/"
       className={`flex items-center ${collapsed ? 'justify-center' : 'gap-2.5'}`}
     >
-      <span className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-brand-600 text-lg font-bold text-white shadow-sm">
+      <span className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-flame-500 text-lg font-bold text-white shadow-sm">
         C
       </span>
       {!collapsed ? (
@@ -202,10 +361,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const drawerRef = useDialog(drawerOpen, () => setDrawerOpen(false))
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       {/* Desktop sidebar — collapses to an icon rail */}
       <aside
-        className={`fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-gray-200 bg-white transition-[width] duration-200 lg:flex ${
+        className={`fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-gray-200/80 bg-white/85 backdrop-blur-xl transition-[width] duration-200 lg:flex ${
           collapsed ? 'w-20' : 'w-72'
         }`}
       >
@@ -213,7 +372,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Brand collapsed={collapsed} />
         </div>
         <div className={`flex-1 overflow-y-auto py-5 ${collapsed ? 'px-2' : 'px-4'}`}>
-          <MonthList collapsed={collapsed} />
+          <CalendarNav collapsed={collapsed} />
         </div>
       </aside>
 
@@ -241,7 +400,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto px-4 py-5">
-              <MonthList onNavigate={() => setDrawerOpen(false)} />
+              <CalendarNav onNavigate={() => setDrawerOpen(false)} />
             </div>
           </div>
         </div>

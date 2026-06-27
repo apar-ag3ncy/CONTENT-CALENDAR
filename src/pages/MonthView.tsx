@@ -2,7 +2,6 @@ import { Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { CalendarToolbar } from '../components/CalendarToolbar'
 import { FinalizeBar } from '../components/FinalizeBar'
 import { DayContent } from '../components/DayContent'
-import { DayStrip } from '../components/DayStrip'
 import { selectedDateFor } from '../components/MonthIndex'
 import { useCalendarRange } from '../hooks/useCalendarData'
 import { isFirebaseConfigured } from '../lib/firebase'
@@ -48,6 +47,7 @@ export default function MonthView() {
     <div className="space-y-4">
       <CalendarToolbar
         view="month"
+        hero
         title={formatMonthYear(year, month0)}
         subtitle={isFetching ? 'Updating…' : undefined}
         prevTo={`/month/${monthKey(addMonths(firstOfMonth, -1))}`}
@@ -63,13 +63,6 @@ export default function MonthView() {
         endISO={monthEndISO}
         locks={locks}
         canEdit={isFirebaseConfigured}
-      />
-
-      <DayStrip
-        monthKeyStr={month as string}
-        year={year}
-        month0={month0}
-        selected={selected}
       />
 
       <DayContent dateISO={selected} />

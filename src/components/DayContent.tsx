@@ -12,20 +12,18 @@ import {
   STATUS_META,
   STATUS_ORDER,
 } from '../lib/contentMeta'
-import { Modal } from './Modal'
 import { ConfirmDialog } from './ConfirmDialog'
-import { ContentForm, type ContentFormValues } from './ContentForm'
 import { Reveal } from './Reveal'
 import { useDayItems, useDayNote } from '../hooks/useDayData'
 import { useCalendarRange } from '../hooks/useCalendarData'
 import { useCategories } from '../hooks/useReferenceData'
 import { useTeamMembers } from '../hooks/useAdminData'
 import {
-  useCreateItem,
   useUpdateItem,
   useDeleteItem,
   useUpsertDayNote,
 } from '../hooks/useMutations'
+import { useNavigate } from 'react-router-dom'
 import { isFirebaseConfigured } from '../lib/firebase'
 import { humanError } from '../lib/errors'
 import type {
@@ -243,6 +241,54 @@ const IconCalendarPlus = () => (
   </svg>
 )
 
+// --- Monoline glyphs for the glass "Add something" cards --------------------
+const IconPost = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7">
+    <rect x="3.5" y="4.5" width="17" height="15" rx="3.5" />
+    <circle cx="9" cy="9.5" r="1.6" />
+    <path d="M4 16.5l4.2-4a2 2 0 0 1 2.7-.1l3.1 2.8M14 14l1.8-1.7a2 2 0 0 1 2.7 0l1.5 1.4" />
+  </svg>
+)
+const IconReel = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7">
+    <rect x="3.5" y="4.5" width="17" height="15" rx="3.5" />
+    <path d="M3.5 9h17M8 4.7l2.4 4.3M13.4 4.7l2.4 4.3" />
+    <path d="M10.6 12.3v4.4l3.8-2.2z" fill="currentColor" stroke="none" />
+  </svg>
+)
+const IconStory = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7">
+    <circle cx="12" cy="12" r="8.5" strokeDasharray="3 2.4" />
+    <path d="M12 7.6V12l3 1.9" />
+  </svg>
+)
+const IconCaption = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7">
+    <path d="M5 5.5h14a1.6 1.6 0 0 1 1.6 1.6v7.4a1.6 1.6 0 0 1-1.6 1.6h-8.4l-4 3v-3H5A1.6 1.6 0 0 1 3.4 14.5V7.1A1.6 1.6 0 0 1 5 5.5Z" />
+    <path d="M7 9.5h10M7 12.5h6" />
+  </svg>
+)
+
+/** Icon, floating-pill label, and desktop cascade offset keyed by ContentType. */
+const ADD_ICONS: Record<ContentType, () => JSX.Element> = {
+  post: IconPost,
+  reel: IconReel,
+  story: IconStory,
+  caption: IconCaption,
+}
+const ADD_PILL: Record<ContentType, string> = {
+  post: 'Feed',
+  reel: 'Video',
+  story: '24h',
+  caption: 'Words',
+}
+const ADD_STAGGER = [
+  'lg:translate-y-0',
+  'lg:translate-y-3',
+  'lg:translate-y-4',
+  'lg:translate-y-1',
+] as const
+
 export function DayContent({ dateISO }: { dateISO: string }) {
   const d = parseISODate(dateISO)
   const dayOfWeek = WEEKDAY_LONG[weekdayMonFirst(d)]
@@ -254,18 +300,15 @@ export function DayContent({ dateISO }: { dateISO: string }) {
   const categoriesQ = useCategories()
   const teamMembersQ = useTeamMembers()
 
+  const navigate = useNavigate()
+
   // Mutations
-  const createItem = useCreateItem()
   const updateItem = useUpdateItem()
   const deleteItem = useDeleteItem()
   const upsertNote = useUpsertDayNote()
 
   // UI state
-  const [formOpen, setFormOpen] = useState(false)
-  const [editingItem, setEditingItem] = useState<ContentItem | null>(null)
-  const [presetType, setPresetType] = useState<ContentType>('post')
   const [confirmItem, setConfirmItem] = useState<ContentItem | null>(null)
-  const [formError, setFormError] = useState<string | null>(null)
   const [pageError, setPageError] = useState<string | null>(null)
   const [noteDraft, setNoteDraft] = useState('')
 
@@ -299,38 +342,12 @@ export function DayContent({ dateISO }: { dateISO: string }) {
 
   const canEdit = isFirebaseConfigured
   const noteDirty = noteDraft !== (dayNote?.note ?? '')
-  const saving = createItem.isPending || updateItem.isPending
 
-  function openAdd(type: ContentType) {
-    setEditingItem(null)
-    setPresetType(type)
-    setFormError(null)
-    setFormOpen(true)
-  }
-  function openEdit(item: ContentItem) {
-    setEditingItem(item)
-    setFormError(null)
-    setFormOpen(true)
-  }
-  function closeForm() {
-    setFormOpen(false)
-    setEditingItem(null)
-  }
-
-  function handleSubmit(values: ContentFormValues) {
-    setFormError(null)
-    if (editingItem) {
-      updateItem.mutate(
-        { id: editingItem.id, patch: values },
-        { onSuccess: closeForm, onError: (e) => setFormError(humanError(e)) },
-      )
-    } else {
-      createItem.mutate(values, {
-        onSuccess: closeForm,
-        onError: (e) => setFormError(humanError(e)),
-      })
-    }
-  }
+  // Add / edit now open the dedicated compose page instead of a popup.
+  const openAdd = (type: ContentType) =>
+    navigate(`/compose?date=${dateISO}&type=${type}`)
+  const openEdit = (item: ContentItem) =>
+    navigate(`/compose?date=${dateISO}&edit=${item.id}`)
 
   function handleDelete() {
     if (!confirmItem) return
@@ -369,11 +386,11 @@ export function DayContent({ dateISO }: { dateISO: string }) {
       <Reveal>
         <div className="card">
         <div className="flex items-start gap-4">
-          <div className="text-center leading-none">
-            <div className="text-sm font-semibold uppercase tracking-wide text-brand-600">
-              {dayOfWeek}
+          <div className="grid flex-none place-items-center rounded-2xl bg-gradient-to-b from-brand-50 to-brand-100/60 px-4 py-2.5 text-center leading-none ring-1 ring-brand-100">
+            <div className="text-[11px] font-bold uppercase tracking-wide text-brand-600">
+              {dayOfWeek.slice(0, 3)}
             </div>
-            <div className="mt-1 text-4xl font-extrabold text-slate-900">
+            <div className="mt-1 text-4xl font-extrabold text-brand-700">
               {d.getDate()}
             </div>
           </div>
@@ -437,24 +454,48 @@ export function DayContent({ dateISO }: { dateISO: string }) {
       {/* Add buttons */}
       <Reveal delay={0.12}>
         <div className="card">
-        <h3 className="text-sm font-bold text-slate-900">Add something</h3>
-        <p className="mt-0.5 text-xs text-slate-500">
-          Pick what you want to plan for this day.
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {ADD_TYPES.map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => openAdd(t)}
-              disabled={!canEdit}
-              className="btn-primary px-4 py-2.5 text-sm disabled:opacity-50"
-              title={canEdit ? undefined : 'Connect Firebase to add content'}
-            >
-              + Add a {CONTENT_TYPE_META[t].label}
-            </button>
-          ))}
-        </div>
+          <h3 className="text-sm font-bold text-slate-900">
+            Add <span className="text-grainient">something</span>
+          </h3>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Pick what you want to plan for this day.
+          </p>
+
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 lg:items-start lg:pb-5">
+            {ADD_TYPES.map((t, i) => {
+              const meta = CONTENT_TYPE_META[t]
+              const Icon = ADD_ICONS[t]
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => openAdd(t)}
+                  disabled={!canEdit}
+                  title={canEdit ? `Add a ${meta.label}` : 'Connect Firebase to add content'}
+                  aria-label={`Add a ${meta.label}`}
+                  className={`group glass-add min-h-[12.5rem] px-3 pb-5 pt-7 sm:min-h-[13.5rem] ${ADD_STAGGER[i]}`}
+                >
+                  {/* convex top sheen */}
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-x-0 top-0 h-1/2 rounded-t-[2rem] bg-gradient-to-b from-white/55 to-transparent"
+                  />
+                  {/* floating pill */}
+                  <span className="relative inline-block rounded-full bg-white/85 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-brand-700 shadow-[0_4px_10px_-4px_rgba(214,46,20,0.35)] ring-1 ring-white/70">
+                    {ADD_PILL[t]}
+                  </span>
+                  {/* centred icon in a frosted disc */}
+                  <span className="relative my-auto grid h-14 w-14 place-items-center rounded-2xl bg-white/55 text-brand-700 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)] ring-1 ring-white/60 transition group-enabled:group-hover:bg-white/75 group-enabled:group-hover:text-brand-600">
+                    <Icon />
+                  </span>
+                  {/* uppercase title */}
+                  <span className="relative text-sm font-extrabold uppercase tracking-[0.12em] text-brand-900">
+                    {meta.label.toUpperCase()}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
         </div>
       </Reveal>
 
@@ -512,28 +553,6 @@ export function DayContent({ dateISO }: { dateISO: string }) {
           })}
         </div>
       )}
-
-      <Modal
-        open={formOpen}
-        onClose={closeForm}
-        accent
-        icon={<IconCalendarPlus />}
-        title={editingItem ? 'Edit content' : 'Add content'}
-        subtitle={formatLongDate(d)}
-      >
-        <ContentForm
-          dateISO={dateISO}
-          dayOfWeek={dayOfWeek}
-          existing={editingItem}
-          presetType={editingItem ? undefined : presetType}
-          categories={categories}
-          teamMembers={teamMembers}
-          saving={saving}
-          errorMessage={formError}
-          onSubmit={handleSubmit}
-          onCancel={closeForm}
-        />
-      </Modal>
 
       <ConfirmDialog
         open={confirmItem !== null}

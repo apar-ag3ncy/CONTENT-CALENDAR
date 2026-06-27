@@ -18,6 +18,23 @@ export default {
           800: '#8F2012',
           900: '#751D13',
         },
+        // Warm orange — pairs with brand red for the red→orange "grainient" look.
+        flame: {
+          50: '#FFF4EC',
+          100: '#FFE3CE',
+          200: '#FCC79B',
+          300: '#F9A463',
+          400: '#F87F23', // light orange
+          500: '#F16001', // gradient mid
+          600: '#E85002', // branding orange
+          700: '#C10801', // deep
+          800: '#9A1106',
+          900: '#7A1D0C',
+        },
+        // Warm neutrals from the palette.
+        cream: '#F0DFCB',
+        sand: '#D9C3AB',
+        ink: '#21130F', // near-black warm brown
         // Shading for festivals / holidays / special days.
         special: '#FBDDD4',
       },

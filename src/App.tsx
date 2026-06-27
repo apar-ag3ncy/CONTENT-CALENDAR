@@ -6,6 +6,8 @@ import MonthView from './pages/MonthView'
 import WeekView from './pages/WeekView'
 import DayView from './pages/DayView'
 import GridView from './pages/GridView'
+import ComposeView from './pages/ComposeView'
+import HomeView from './pages/HomeView'
 import SettingsView from './pages/SettingsView'
 
 function Placeholder({ title }: { title: string }) {
@@ -26,13 +28,14 @@ export default function App() {
   return (
     <AppShell>
       <Routes>
-        <Route path="/" element={<Navigate to={`/month/${currentMonth}`} replace />} />
+        <Route path="/" element={<HomeView />} />
         <Route path="/year" element={<Navigate to={`/year/${currentYear}`} replace />} />
         <Route path="/year/:year" element={<YearView />} />
         <Route path="/month/:month" element={<MonthView />} />
         <Route path="/week/:weekStart" element={<WeekView />} />
         <Route path="/day/:date" element={<DayView />} />
         <Route path="/grid" element={<GridView />} />
+        <Route path="/compose" element={<ComposeView />} />
         <Route path="/settings" element={<SettingsView />} />
         <Route path="*" element={<Placeholder title="Page not found" />} />
       </Routes>
