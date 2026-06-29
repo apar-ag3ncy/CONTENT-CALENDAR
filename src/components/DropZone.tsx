@@ -39,12 +39,14 @@ export function DropZone({
   multiple = false,
   disabled = false,
   accept = 'image/*,video/*',
+  tall = false,
 }: {
   value: MediaItem[]
   onChange: (value: MediaItem[]) => void
   multiple?: boolean
   disabled?: boolean
   accept?: string
+  tall?: boolean
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
@@ -187,7 +189,9 @@ export function DropZone({
         }}
         onDragLeave={() => setDragOver(false)}
         onDrop={onDrop}
-        className={`flex w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed px-4 py-8 text-center backdrop-blur transition ${
+        className={`flex w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed px-4 text-center backdrop-blur transition ${
+          tall ? 'py-16 sm:py-20' : 'py-8'
+        } ${
           dragOver
             ? 'border-brand-400 bg-brand-50/70'
             : 'border-flame-200/70 bg-white/45 hover:border-brand-300 hover:bg-flame-50/50'

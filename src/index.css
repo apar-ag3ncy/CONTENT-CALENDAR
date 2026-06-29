@@ -187,6 +187,49 @@ body {
   animation: pop-in 0.3s ease-out both;
 }
 
+/* Rich dark-orange gradient canvas for the compose ("create") page.
+   Deep espresso edges with a molten-orange band; grain for depth. */
+.compose-canvas {
+  position: relative;
+  isolation: isolate;
+  background-color: #1f0a03;
+  background-image:
+    radial-gradient(55% 70% at 6% -8%, rgba(249, 164, 99, 0.5), transparent 55%),
+    radial-gradient(62% 72% at 106% 112%, rgba(225, 46, 20, 0.55), transparent 55%),
+    linear-gradient(
+      155deg,
+      #3a1206 0%,
+      #5c1c08 24%,
+      #9a330d 48%,
+      #e8590c 70%,
+      #84260a 88%,
+      #2a0d04 100%
+    );
+  box-shadow: 0 30px 70px -34px rgba(58, 18, 6, 0.85);
+}
+.compose-canvas::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.14;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+.compose-canvas > * {
+  position: relative;
+  z-index: 1;
+}
+/* Soft Pinterest-style white card that floats on the canvas. */
+.pin-card {
+  @apply rounded-[1.6rem] bg-white/95 ring-1 ring-white/70 backdrop-blur;
+  box-shadow:
+    0 1px 2px rgba(58, 18, 6, 0.08),
+    0 26px 50px -30px rgba(31, 10, 3, 0.65);
+}
+
 /* Toast entrance — slide in from the right + fade. */
 @keyframes toast-in {
   from {

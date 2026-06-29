@@ -72,64 +72,66 @@ export default function ComposeView() {
   }
 
   return (
-    <div className="relative space-y-5">
-      {/* Grainient hero */}
-      <div className="grainient overflow-hidden rounded-3xl px-6 py-7 text-white shadow-[0_18px_40px_-18px_rgba(138,31,12,0.6)] sm:px-9 sm:py-9">
+    <div className="compose-canvas relative overflow-hidden rounded-[2rem] px-4 py-6 text-white sm:px-7 sm:py-8">
+      {/* Decorative oversized watermark */}
+      <span aria-hidden className="pointer-events-none absolute -right-6 -top-10 select-none font-serif text-[12rem] leading-none text-white/[0.06] sm:text-[16rem]">
+        +
+      </span>
+
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
           to={backTo}
-          className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/25"
+          className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3.5 py-1.5 text-sm font-semibold text-white ring-1 ring-white/15 backdrop-blur transition hover:bg-white/25"
         >
           <span aria-hidden>←</span> Back to the day
         </Link>
-        <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.22em] text-white/70">
+        <span className="rounded-full bg-white/12 px-3.5 py-1.5 text-xs font-semibold text-white/90 ring-1 ring-white/20 backdrop-blur">
+          {formatLongDate(d)}
+        </span>
+      </div>
+
+      <div className="mt-5">
+        <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-flame-200/90">
           {isEdit ? 'Edit content' : 'New content'}
         </p>
-        <h1 className="mt-1 text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
+        <h1 className="mt-1.5 text-3xl font-extrabold leading-tight tracking-tight text-cream sm:text-[2.6rem]">
           {isEdit ? 'Edit this content' : 'Create something'}
         </h1>
-        <p className="mt-1.5 text-sm font-medium text-white/85">
-          {formatLongDate(d)}
-        </p>
       </div>
 
       {!isApiConfigured ? (
-        <div className="mx-auto max-w-2xl rounded-2xl border border-flame-200/70 bg-flame-50/70 px-4 py-2.5 text-sm text-flame-800 backdrop-blur">
+        <div className="mt-4 rounded-2xl border border-white/25 bg-black/15 px-4 py-2.5 text-sm text-white/90 backdrop-blur">
           ⚠️ The backend isn&rsquo;t connected yet — you can fill this in, but it
-          won&rsquo;t save until <code>VITE_API_URL</code> is set (see server/).
+          won&rsquo;t save until <code className="font-mono">VITE_API_URL</code> is set (see server/).
         </div>
       ) : null}
 
-      {/* Frosted form panel — soft white→warm glass; padding keeps ContentForm's -mx-5 -mb-4 footer bleed. */}
       <Reveal>
-        <div className="glass-form mx-auto max-w-2xl px-5 pt-6 pb-4">
-        {loadingEdit ? (
-          <p className="py-10 text-center text-sm text-slate-400">Loading…</p>
-        ) : isEdit && !editing ? (
-          <div className="py-8 text-center">
-            <p className="text-sm text-slate-500">
-              That item couldn&rsquo;t be found.
-            </p>
-            <Link
-              to={backTo}
-              className="mt-3 inline-block text-sm font-semibold text-brand-700 hover:underline"
-            >
-              ← Back to the day
-            </Link>
-          </div>
-        ) : (
-          <ContentForm
-            dateISO={dateISO}
-            dayOfWeek={dayOfWeek}
-            existing={editing}
-            presetType={isEdit ? undefined : presetType}
-            categories={categoriesQ.data ?? []}
-            teamMembers={teamQ.data ?? []}
-            saving={saving}
-            errorMessage={error}
-            onSubmit={handleSubmit}
-            onCancel={() => navigate(backTo)}
-          />
-        )}
+        <div className="mt-6">
+          {loadingEdit ? (
+            <div className="pin-card py-10 text-center text-sm text-slate-400">Loading…</div>
+          ) : isEdit && !editing ? (
+            <div className="pin-card py-10 text-center">
+              <p className="text-sm text-slate-500">That item couldn&rsquo;t be found.</p>
+              <Link to={backTo} className="mt-3 inline-block text-sm font-semibold text-brand-700 hover:underline">
+                ← Back to the day
+              </Link>
+            </div>
+          ) : (
+            <ContentForm
+              dateISO={dateISO}
+              dayOfWeek={dayOfWeek}
+              existing={editing}
+              presetType={isEdit ? undefined : presetType}
+              categories={categoriesQ.data ?? []}
+              teamMembers={teamQ.data ?? []}
+              saving={saving}
+              errorMessage={error}
+              onSubmit={handleSubmit}
+              onCancel={() => navigate(backTo)}
+            />
+          )}
         </div>
       </Reveal>
     </div>
