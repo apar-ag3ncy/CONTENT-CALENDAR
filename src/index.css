@@ -461,10 +461,37 @@ body {
 .dark .ring-forest-100 { --tw-ring-color: #38302a; }
 .dark .ring-brand-100 { --tw-ring-color: rgba(238, 58, 36, 0.3); }
 
-/* Form fields on dark */
+/* Form fields on dark — inputs without an explicit bg class default to white,
+   which my .bg-white override can't catch, so style the elements directly. */
+.dark textarea,
+.dark select,
+.dark input[type='text'],
+.dark input[type='url'],
+.dark input[type='email'],
+.dark input[type='search'],
+.dark input[type='number'],
+.dark input[type='password'],
+.dark input:not([type]) {
+  background-color: #1b1510;
+  border-color: #4a3f34;
+  color: #ece5dd;
+}
 .dark input::placeholder,
 .dark textarea::placeholder { color: #7d7264; }
 .dark .disabled\:bg-slate-50:disabled { background-color: #1d1713; }
+
+/* "Add something" glass cards: in dark, a clean warm-dark surface with readable
+   titles (drop the bright top sheen and lift the dark-red title text). */
+.dark .glass-add {
+  background-image: linear-gradient(
+    160deg,
+    rgba(62, 50, 40, 0.96) 0%,
+    rgba(44, 35, 27, 0.96) 60%,
+    rgba(238, 58, 36, 0.14) 100%
+  );
+}
+.dark .glass-add > span[aria-hidden]:first-of-type { opacity: 0; }
+.dark .glass-add .text-brand-900 { color: #f7ddd1; }
 
 /* Keep these intentionally-dark/coloured heroes as-is in dark mode:
    .grainient, .compose-canvas already render dark; no override needed. */

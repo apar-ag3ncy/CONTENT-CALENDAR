@@ -388,11 +388,11 @@ export function DayContent({ dateISO }: { dateISO: string }) {
       <Reveal>
         <div className="card">
         <div className="flex items-start gap-4">
-          <div className="grid flex-none place-items-center rounded-2xl bg-gradient-to-b from-brand-50 to-brand-100/60 px-4 py-2.5 text-center leading-none ring-1 ring-brand-100">
-            <div className="text-[11px] font-bold uppercase tracking-wide text-brand-600">
+          <div className="grid flex-none place-items-center rounded-2xl bg-gradient-to-b from-brand-50 to-brand-100/60 px-4 py-2.5 text-center leading-none ring-1 ring-brand-100 dark:from-brand-500/20 dark:to-brand-600/10 dark:ring-brand-500/30">
+            <div className="text-[11px] font-bold uppercase tracking-wide text-brand-600 dark:text-brand-300">
               {dayOfWeek.slice(0, 3)}
             </div>
-            <div className="mt-1 text-4xl font-extrabold text-brand-700">
+            <div className="mt-1 text-4xl font-extrabold text-brand-700 dark:text-brand-300">
               {d.getDate()}
             </div>
           </div>
