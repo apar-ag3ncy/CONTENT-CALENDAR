@@ -243,7 +243,7 @@ function ProfilePreview({
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <h2 className="font-serif text-2xl font-bold text-forest-800">chhedas.apar</h2>
+              <h2 className="font-serif text-2xl font-bold text-forest-800">chheda jewellers</h2>
               <span className="rounded-full bg-forest-600 px-3 py-1 text-[11px] font-semibold text-cream">
                 Brand profile
               </span>
@@ -344,7 +344,7 @@ function PostModal({ item, onClose }: { item: ContentItem; onClose: () => void }
           <div className="flex items-center gap-3 border-b border-slate-100 p-4">
             <div className="grid h-9 w-9 flex-none place-items-center rounded-full bg-forest-700 font-serif text-sm text-cream">C</div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-bold text-forest-800">chhedas.apar</p>
+              <p className="truncate text-sm font-bold text-forest-800">chheda jewellers</p>
               <p className="text-[11px] text-forest-400">
                 {weekdayLong(item.date)}, {monthShort(item.date)} {dayNum(item.date)}
               </p>
@@ -439,7 +439,7 @@ function StoriesViewer({ stories, onClose }: { stories: ContentItem[]; onClose: 
         {/* header */}
         <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-2 px-3 pb-2 pt-6 text-white">
           <div className="grid h-8 w-8 flex-none place-items-center rounded-full bg-forest-700 font-serif text-xs text-cream ring-2 ring-white/70">C</div>
-          <span className="text-sm font-semibold">chhedas.apar</span>
+          <span className="text-sm font-semibold">chheda jewellers</span>
           <span className="text-[11px] text-white/70">· {monthShort(cur.date)} {dayNum(cur.date)}</span>
           <span className="ml-auto text-[11px] text-white/60">{idx + 1}/{stories.length}</span>
         </div>
