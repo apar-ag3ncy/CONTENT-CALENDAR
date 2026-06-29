@@ -101,7 +101,7 @@ export function MonthIndex({ onNavigate }: { onNavigate?: () => void }) {
         <span>Overview — the whole feed</span>
       </Link>
 
-      <div className="space-y-1">
+      <div className="space-y-2">
         {Array.from({ length: count }, (_, i) => {
           const date = new Date(year, month0, i + 1)
           const iso = toISODate(date)
@@ -118,7 +118,7 @@ export function MonthIndex({ onNavigate }: { onNavigate?: () => void }) {
               to={`/month/${monthKeyStr}?d=${iso}`}
               onClick={onNavigate}
               aria-current={isSel ? 'true' : undefined}
-              className={`flex items-center gap-2 rounded-xl border px-3 py-2 transition ${
+              className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 transition ${
                 isSel
                   ? 'border-brand-600 bg-brand-600 text-white'
                   : special
@@ -126,7 +126,7 @@ export function MonthIndex({ onNavigate }: { onNavigate?: () => void }) {
                     : 'border-slate-200 bg-white hover:bg-slate-50'
               }`}
             >
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 leading-snug">
                 <div
                   className={`text-sm font-bold ${isSel ? 'text-white' : 'text-slate-900'}`}
                 >
@@ -144,7 +144,7 @@ export function MonthIndex({ onNavigate }: { onNavigate?: () => void }) {
                   ) : null}
                 </div>
                 <div
-                  className={`text-xs ${isSel ? 'text-white/80' : 'text-slate-500'}`}
+                  className={`mt-0.5 text-xs ${isSel ? 'text-white/80' : 'text-slate-500'}`}
                 >
                   {WEEKDAY_LONG[weekdayMonFirst(date)]}
                 </div>

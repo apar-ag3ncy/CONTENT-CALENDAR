@@ -1,7 +1,7 @@
 // Reads for the Categories & Info page and the Overview feed.
 // Uses the MongoDB API when configured, else the read-only demo seed.
 import { useQuery } from '@tanstack/react-query'
-import { DEMO_MODE, demoGridItems } from '../lib/demoData'
+import { DEMO_MODE, demoGridItems, DEMO_ITEMS } from '../lib/demoData'
 import { api } from '../lib/api'
 import type { AppInfo, ContentItem, TeamMember } from '../types/database'
 
@@ -32,6 +32,17 @@ export function useGridItems() {
     queryFn: async (): Promise<ContentItem[]> => {
       if (DEMO_MODE) return demoGridItems()
       return api.grid()
+    },
+  })
+}
+
+/** Every content item across all days — used by Grid Review for the full overview. */
+export function useAllContent() {
+  return useQuery({
+    queryKey: ['content_items'],
+    queryFn: async (): Promise<ContentItem[]> => {
+      if (DEMO_MODE) return DEMO_ITEMS
+      return api.allContent()
     },
   })
 }

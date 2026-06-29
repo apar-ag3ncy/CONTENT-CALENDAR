@@ -29,9 +29,10 @@ const IconX = () => (
 
 /**
  * Reusable drag-and-drop / click-to-browse uploader. Uploads each file to the
- * MongoDB backend (GridFS) and reports the served URL + storage path back via
- * onChange. Supports single or multiple files (e.g. Instagram carousels) and
- * renders a preview for each item with a remove (×) control.
+ * backend (POST /api/media; the PHP backend stores it on disk under media/) and
+ * reports the served URL + storage path back via onChange. Supports single or
+ * multiple files (e.g. Instagram carousels) and renders a preview for each item
+ * with a remove (×) control.
  */
 export function DropZone({
   value,
@@ -96,8 +97,8 @@ export function DropZone({
         if (!mountedRef.current || !item) return
         const base = multiple ? valueRef.current : []
         onChange([...base, item])
-        // Notify (top-right) once the file is stored in MongoDB.
-        toast.success('Added successfully', `“${file.name}” saved to MongoDB.`)
+        // Notify (top-right) once the file is stored on the server.
+        toast.success('Added successfully', `“${file.name}” uploaded.`)
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Upload failed. Please try again.'

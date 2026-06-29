@@ -257,10 +257,7 @@ export function ContentForm({
   const [media, setMedia] = useState<MediaItem[]>(existing?.media ?? [])
   const [title, setTitle] = useState(existing?.title ?? '')
   const [caption, setCaption] = useState(existing?.caption ?? '')
-  const [categoryId, setCategoryId] = useState(existing?.category_id ?? '')
-  const [driveLink, setDriveLink] = useState(existing?.drive_link ?? '')
-  const [assignedTo, setAssignedTo] = useState(existing?.assigned_to ?? '')
-  const [status, setStatus] = useState<ContentStatus>(existing?.status ?? 'idea')
+  const [status, setStatus] = useState<ContentStatus>(existing?.status ?? 'scheduled')
   const [notes, setNotes] = useState(existing?.notes ?? '')
   const [touched, setTouched] = useState(false)
   const titleRef = useRef<HTMLInputElement>(null)
@@ -268,10 +265,6 @@ export function ContentForm({
   const isCaption = type === 'caption'
   const isCarousel = type === 'post' && format === 'carousel'
   const titleError = title.trim() === '' ? 'Please add a short title.' : ''
-  const driveError =
-    driveLink.trim() !== '' && !/^https?:\/\//i.test(driveLink.trim())
-      ? 'Link should start with http:// or https://'
-      : ''
 
   function handleType(next: ContentType) {
     setType(next)
@@ -282,11 +275,9 @@ export function ContentForm({
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setTouched(true)
-    if (titleError || driveError) {
-      if (titleError) {
-        titleRef.current?.focus()
-        titleRef.current?.scrollIntoView({ block: 'center' })
-      }
+    if (titleError) {
+      titleRef.current?.focus()
+      titleRef.current?.scrollIntoView({ block: 'center' })
       return
     }
     onSubmit({
@@ -298,9 +289,9 @@ export function ContentForm({
       media: isCaption ? [] : media,
       title: title.trim() || null,
       caption: caption.trim() || null,
-      drive_link: driveLink.trim() || null,
-      category_id: categoryId || null,
-      assigned_to: assignedTo || null,
+      drive_link: null, // Drive links now live per-day, not per-item
+      category_id: null,
+      assigned_to: null,
       status,
       notes: notes.trim() || null,
       grid_position: existing?.grid_position ?? null,
@@ -351,7 +342,7 @@ export function ContentForm({
             </div>
             <DropZone value={media} onChange={setMedia} multiple={isCarousel} tall />
             <p className="text-center text-xs text-slate-400">
-              {isCarousel ? 'Carousel — add several photos.' : 'Drag a file in, or click to browse. Saved to MongoDB.'}
+              {isCarousel ? 'Carousel — add several photos.' : 'Drag a file in, or click to browse.'}
             </p>
           </div>
         ) : (
@@ -393,57 +384,11 @@ export function ContentForm({
             />
           </Field>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Category">
-              <select className={inputCls} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-                <option value="">— None —</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-
-            <Field label="Status">
-              <select className={inputCls} value={status} onChange={(e) => setStatus(e.target.value as ContentStatus)}>
-                {STATUS_ORDER.map((s) => (
-                  <option key={s} value={s}>
-                    {STATUS_META[s].label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </div>
-
-          <Field
-            label="Drive link"
-            error={touched ? driveError : ''}
-            hint={isCaption ? undefined : 'Optional — paste a Google Drive share link too.'}
-          >
-            <input
-              className={inputCls}
-              value={driveLink}
-              onChange={(e) => setDriveLink(e.target.value)}
-              placeholder="https://drive.google.com/…"
-              inputMode="url"
-            />
-          </Field>
-
-          <Field
-            label="Assigned to"
-            hint={teamMembers.length === 0 ? 'Add team members in Settings to assign work.' : undefined}
-          >
-            <select
-              className={inputCls}
-              value={assignedTo}
-              onChange={(e) => setAssignedTo(e.target.value)}
-              disabled={teamMembers.length === 0}
-            >
-              <option value="">— Unassigned —</option>
-              {teamMembers.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name || 'Unnamed'}
+          <Field label="Status">
+            <select className={inputCls} value={status} onChange={(e) => setStatus(e.target.value as ContentStatus)}>
+              {STATUS_ORDER.map((s) => (
+                <option key={s} value={s}>
+                  {STATUS_META[s].label}
                 </option>
               ))}
             </select>

@@ -16,8 +16,6 @@ import { ConfirmDialog } from './ConfirmDialog'
 import { Reveal } from './Reveal'
 import { useDayItems, useDayNote } from '../hooks/useDayData'
 import { useCalendarRange } from '../hooks/useCalendarData'
-import { useCategories } from '../hooks/useReferenceData'
-import { useTeamMembers } from '../hooks/useAdminData'
 import {
   useUpdateItem,
   useDeleteItem,
@@ -44,20 +42,39 @@ function isImageThumb(m: MediaItem): boolean {
   return IMG_RE.test(m.name) || IMG_RE.test(m.url)
 }
 
+/** Download every media file of an item (same-origin /media files honour `download`). */
+function downloadMedia(media: MediaItem[]) {
+  media.forEach((m, i) => {
+    const a = document.createElement('a')
+    a.href = m.url
+    a.download = m.name || `media-${i + 1}`
+    a.rel = 'noopener'
+    document.body.appendChild(a)
+    // Stagger so the browser doesn't drop rapid-fire downloads.
+    window.setTimeout(() => {
+      a.click()
+      a.remove()
+    }, i * 300)
+  })
+}
+
+const IconDownload = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+    <path d="M12 4v11m0 0 4-4m-4 4-4-4" />
+    <path d="M5 19.5h14" />
+  </svg>
+)
+
 const ADD_TYPES: ContentType[] = ['post', 'reel', 'story', 'caption']
 
 function ItemCard({
   item,
-  categoryName,
-  assigneeName,
   canEdit,
   onEdit,
   onRemove,
   onStatusChange,
 }: {
   item: ContentItem
-  categoryName: string | null
-  assigneeName: string | null
   canEdit: boolean
   onEdit: (item: ContentItem) => void
   onRemove: (item: ContentItem) => void
@@ -65,11 +82,21 @@ function ItemCard({
 }) {
   const images = item.media.filter(isImageThumb)
   const videos = item.media.filter((m) => !isImageThumb(m))
-  const firstMedia = item.media[0] ?? null
 
   return (
-    <div className="rounded-2xl border border-slate-200 p-4 sm:p-5">
-      <div className="flex flex-wrap items-center gap-1.5">
+    <div className="relative rounded-2xl border border-slate-200 p-4 sm:p-5">
+      {item.media.length > 0 ? (
+        <button
+          type="button"
+          onClick={() => downloadMedia(item.media)}
+          title="Download media"
+          aria-label="Download media"
+          className="absolute right-3 top-3 z-10 inline-flex items-center gap-1 rounded-lg bg-slate-900/5 px-2.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-brand-50 hover:text-brand-700"
+        >
+          <IconDownload /> Download
+        </button>
+      ) : null}
+      <div className="flex flex-wrap items-center gap-1.5 pr-28">
         <TypeChipInline type={item.type} />
         {item.type === 'post' && item.post_format ? (
           <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-semibold text-slate-600 ring-1 ring-slate-200">
@@ -148,29 +175,13 @@ function ItemCard({
         </div>
       ) : null}
 
-      {categoryName || assigneeName || item.notes ? (
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-          {categoryName ? (
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 font-semibold">
-              {categoryName}
-            </span>
-          ) : null}
-          {assigneeName ? <span>👤 {assigneeName}</span> : null}
-          {item.notes ? <span className="italic">“{item.notes}”</span> : null}
+      {item.notes ? (
+        <div className="mt-2 text-xs text-slate-500">
+          <span className="italic">“{item.notes}”</span>
         </div>
       ) : null}
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        {item.drive_link ? (
-          <a
-            href={item.drive_link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 rounded-xl bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-800 transition hover:bg-brand-100"
-          >
-            📂 Open in Drive
-          </a>
-        ) : null}
         <label className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500">
           Status
           <select
@@ -297,8 +308,6 @@ export function DayContent({ dateISO }: { dateISO: string }) {
   const dayItemsQ = useDayItems(dateISO)
   const dayNoteQ = useDayNote(dateISO)
   const { specialDays } = useCalendarRange(dateISO, dateISO)
-  const categoriesQ = useCategories()
-  const teamMembersQ = useTeamMembers()
 
   const navigate = useNavigate()
 
@@ -311,22 +320,11 @@ export function DayContent({ dateISO }: { dateISO: string }) {
   const [confirmItem, setConfirmItem] = useState<ContentItem | null>(null)
   const [pageError, setPageError] = useState<string | null>(null)
   const [noteDraft, setNoteDraft] = useState('')
+  const [driveDraft, setDriveDraft] = useState('')
 
   const items = dayItemsQ.data ?? []
-  const categories = categoriesQ.data ?? []
-  const teamMembers = teamMembersQ.data ?? []
   const special = specialDays[0]
   const dayNote = dayNoteQ.data ?? null
-
-  const categoryName = useMemo(() => {
-    const map = new Map(categories.map((c) => [c.id, c.name]))
-    return (id: string | null) => (id ? (map.get(id) ?? null) : null)
-  }, [categories])
-
-  const teamMemberName = useMemo(() => {
-    const map = new Map(teamMembers.map((m) => [m.id, m.name]))
-    return (id: string | null) => (id ? (map.get(id) ?? null) : null)
-  }, [teamMembers])
 
   const byType = useMemo(() => {
     const map = new Map<ContentType, ContentItem[]>()
@@ -335,13 +333,16 @@ export function DayContent({ dateISO }: { dateISO: string }) {
     return map
   }, [items])
 
-  // Keep the note editor in sync with what's loaded / the active day.
+  // Keep the day editor in sync with what's loaded / the active day.
   useEffect(() => {
     setNoteDraft(dayNote?.note ?? '')
-  }, [dayNote?.note, dateISO])
+    setDriveDraft(dayNote?.drive_link ?? '')
+  }, [dayNote?.note, dayNote?.drive_link, dateISO])
 
   const canEdit = isApiConfigured
-  const noteDirty = noteDraft !== (dayNote?.note ?? '')
+  const dayDirty =
+    noteDraft !== (dayNote?.note ?? '') ||
+    driveDraft !== (dayNote?.drive_link ?? '')
 
   // Add / edit now open the dedicated compose page instead of a popup.
   const openAdd = (type: ContentType) =>
@@ -363,10 +364,10 @@ export function DayContent({ dateISO }: { dateISO: string }) {
     )
   }
 
-  function saveNote() {
+  function saveDay() {
     setPageError(null)
     upsertNote.mutate(
-      { date: dateISO, note: noteDraft },
+      { date: dateISO, note: noteDraft, drive_link: driveDraft.trim() || null },
       { onError: (e) => setPageError(humanError(e)) },
     )
   }
@@ -415,35 +416,67 @@ export function DayContent({ dateISO }: { dateISO: string }) {
         </p>
       ) : null}
 
-      {/* Day notes */}
+      {/* Day folder + notes */}
       <Reveal delay={0.06}>
         <div className="card">
-        <h3 className="text-sm font-bold text-slate-900">Day notes</h3>
+        <h3 className="text-sm font-bold text-slate-900">This day</h3>
         <p className="mt-0.5 text-xs text-slate-500">
-          A shared note for the whole team about this day.
+          One Drive folder + a shared note for everything on this date.
         </p>
-        <textarea
-          className="mt-2 min-h-[90px] w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-400 disabled:bg-slate-50"
-          value={noteDraft}
-          onChange={(e) => setNoteDraft(e.target.value)}
-          disabled={!canEdit}
-          placeholder={
-            canEdit
-              ? 'e.g. Big festival push — keep captions cheerful.'
-              : 'Connect the backend to add day notes.'
-          }
-        />
+
+        <label className="mt-3 block">
+          <span className="mb-1 block text-xs font-semibold text-slate-600">
+            📂 Drive folder for this day
+          </span>
+          <div className="flex flex-wrap gap-2">
+            <input
+              type="url"
+              inputMode="url"
+              value={driveDraft}
+              disabled={!canEdit}
+              onChange={(e) => setDriveDraft(e.target.value)}
+              placeholder="https://drive.google.com/…  (this date's posts, reels & stories)"
+              className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-400 disabled:bg-slate-50"
+            />
+            {dayNote?.drive_link ? (
+              <a
+                href={dayNote.drive_link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex flex-none items-center gap-1 rounded-xl bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-800 transition hover:bg-brand-100"
+              >
+                📂 Open folder
+              </a>
+            ) : null}
+          </div>
+        </label>
+
+        <label className="mt-3 block">
+          <span className="mb-1 block text-xs font-semibold text-slate-600">Day note</span>
+          <textarea
+            className="min-h-[80px] w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-brand-400 disabled:bg-slate-50"
+            value={noteDraft}
+            onChange={(e) => setNoteDraft(e.target.value)}
+            disabled={!canEdit}
+            placeholder={
+              canEdit
+                ? 'e.g. Big festival push — keep captions cheerful.'
+                : 'Connect the backend to add day notes.'
+            }
+          />
+        </label>
+
         {canEdit ? (
           <div className="mt-2 flex items-center gap-2">
             <button
               type="button"
-              onClick={saveNote}
-              disabled={!noteDirty || upsertNote.isPending}
+              onClick={saveDay}
+              disabled={!dayDirty || upsertNote.isPending}
               className="btn-primary px-4 py-2 text-sm disabled:opacity-50"
             >
-              {upsertNote.isPending ? 'Saving…' : 'Save note'}
+              {upsertNote.isPending ? 'Saving…' : 'Save'}
             </button>
-            {!noteDirty && dayNote ? (
+            {!dayDirty && dayNote ? (
               <span className="text-xs text-slate-500">Saved</span>
             ) : null}
           </div>
@@ -538,8 +571,6 @@ export function DayContent({ dateISO }: { dateISO: string }) {
                     <ItemCard
                       key={item.id}
                       item={item}
-                      categoryName={categoryName(item.category_id)}
-                      assigneeName={teamMemberName(item.assigned_to)}
                       canEdit={canEdit}
                       onEdit={openEdit}
                       onRemove={setConfirmItem}

@@ -1,0 +1,28 @@
+# Route every /api/* request through the front controller (index.php), so the
+# REST paths like /api/content/:id and /api/categories/:id work on shared hosting.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  # Serve real files (index.php itself) and dirs as-is; everything else -> index.php.
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^ index.php [QSA,L]
+</IfModule>
+
+# Never serve the secrets/config, sample, or schema as plain text.
+<Files "config.php">
+  Require all denied
+</Files>
+<Files "config.sample.php">
+  Require all denied
+</Files>
+<Files "schema.sql">
+  Require all denied
+</Files>
+
+# Bigger uploads for videos (GoDaddy may ignore these under PHP-FPM — if so, use
+# cPanel's "MultiPHP INI Editor" instead; see DEPLOY-CPANEL.md).
+<IfModule mod_php.c>
+  php_value upload_max_filesize 256M
+  php_value post_max_size 256M
+  php_value max_execution_time 300
+</IfModule>

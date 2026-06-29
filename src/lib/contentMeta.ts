@@ -52,21 +52,13 @@ export const POST_FORMAT_META: Record<
   carousel: { label: 'Carousel', icon: '🎠' },
 }
 
-export const STATUS_ORDER: ContentStatus[] = [
-  'idea',
-  'drafting',
-  'ready',
-  'scheduled',
-  'posted',
-]
+export const STATUS_ORDER: ContentStatus[] = ['scheduled', 'posted', 'backup']
 
 export const STATUS_META: Record<
   ContentStatus,
   { label: string; chip: string }
 > = {
-  idea: { label: 'Idea', chip: 'bg-slate-100 text-slate-600' },
-  drafting: { label: 'Drafting', chip: 'bg-amber-100 text-amber-800' },
-  ready: { label: 'Ready', chip: 'bg-sky-100 text-sky-800' },
   scheduled: { label: 'Scheduled', chip: 'bg-violet-100 text-violet-800' },
   posted: { label: 'Posted', chip: 'bg-emerald-100 text-emerald-800' },
+  backup: { label: 'Backup', chip: 'bg-amber-100 text-amber-800' },
 }

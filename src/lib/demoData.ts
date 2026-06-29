@@ -62,7 +62,7 @@ function mk(p: {
     caption: p.caption ?? null,
     drive_link: null,
     category_id: null,
-    status: p.status ?? 'idea',
+    status: p.status ?? 'scheduled',
     assigned_to: null,
     notes: null,
     grid_position: p.grid ?? null,
@@ -91,15 +91,15 @@ export const DEMO_ITEMS: ContentItem[] = [
   mk({
     date: '2026-07-02', day: 'Thursday', type: 'reel',
     title: 'The reveal', caption: '15 seconds with the new collection. 🎬 Sound on.',
-    status: 'ready', grid: 1, media: [asset(VID)],
+    status: 'posted', grid: 1, media: [asset(VID)],
   }),
   mk({
     date: '2026-07-02', day: 'Thursday', type: 'story',
-    title: 'Sneak peek', caption: 'Dropping tomorrow.', status: 'ready', media: [asset(B)],
+    title: 'Sneak peek', caption: 'Dropping tomorrow.', status: 'posted', media: [asset(B)],
   }),
   mk({
     date: '2026-07-02', day: 'Thursday', type: 'story',
-    title: 'BTS in the studio', caption: 'Styling the shoot.', status: 'drafting', media: [asset(D)],
+    title: 'BTS in the studio', caption: 'Styling the shoot.', status: 'backup', media: [asset(D)],
   }),
 
   // ─────────────── Day 2 — Friday, July 3 2026 ───────────────
@@ -107,23 +107,23 @@ export const DEMO_ITEMS: ContentItem[] = [
   mk({
     date: '2026-07-03', day: 'Friday', type: 'post', format: 'carousel',
     title: 'The bridal edit', caption: 'Four ways to wear the collection. Swipe → 💍\n\n#BridalEdit #Mireyaa',
-    status: 'drafting', grid: 2, media: [asset(E), asset(C), asset(F), asset(A)],
+    status: 'backup', grid: 2, media: [asset(E), asset(C), asset(F), asset(A)],
   }),
   mk({
     date: '2026-07-03', day: 'Friday', type: 'story',
-    title: 'New drop is live', caption: 'Swipe up.', status: 'ready', media: [asset(B)],
+    title: 'New drop is live', caption: 'Swipe up.', status: 'posted', media: [asset(B)],
   }),
   mk({
     date: '2026-07-03', day: 'Friday', type: 'story',
-    title: 'Behind the bridal set', caption: 'On set today.', status: 'drafting', media: [asset(C)],
+    title: 'Behind the bridal set', caption: 'On set today.', status: 'backup', media: [asset(C)],
   }),
   mk({
     date: '2026-07-03', day: 'Friday', type: 'story',
-    title: 'Poll: which piece?', caption: 'Tap to vote.', status: 'idea', media: [asset(D)],
+    title: 'Poll: which piece?', caption: 'Tap to vote.', status: 'backup', media: [asset(D)],
   }),
   mk({
     date: '2026-07-03', day: 'Friday', type: 'story',
-    title: 'Last call', caption: 'Closing the edit.', status: 'ready', media: [asset(E)],
+    title: 'Last call', caption: 'Closing the edit.', status: 'posted', media: [asset(E)],
   }),
 ]
 

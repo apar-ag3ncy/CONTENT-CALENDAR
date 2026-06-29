@@ -38,3 +38,9 @@ logs
 # local animation reference (do not commit)
 public/ref.mov
 public/ref.html
+
+# cPanel PHP backend: config, SQLite data, uploaded media, deploy artifact
+api/config.php
+api/data/
+/media/
+content-calendar-cpanel.zip

@@ -45,7 +45,15 @@ export function useDeleteItem() {
 export function useUpsertDayNote() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ date, note }: { date: string; note: string }) => api.upsertDayNote(date, note),
+    mutationFn: ({
+      date,
+      note,
+      drive_link = null,
+    }: {
+      date: string
+      note: string
+      drive_link?: string | null
+    }) => api.upsertDayNote(date, note, drive_link),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['day_note', vars.date] })
     },

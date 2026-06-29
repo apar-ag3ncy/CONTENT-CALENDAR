@@ -12,11 +12,9 @@ export type PostFormat = 'static' | 'carousel'
 export type MediaType = 'photo' | 'video'
 
 export type ContentStatus =
-  | 'idea'
-  | 'drafting'
-  | 'ready'
   | 'scheduled'
   | 'posted'
+  | 'backup'
 
 export type LockScope = 'month' | 'week' | 'range'
 
@@ -73,8 +71,9 @@ export interface PeriodLock {
 }
 
 export interface DayNote {
-  date: string // Firestore doc id === date
+  date: string // primary key === date
   note: string
+  drive_link: string | null // one Google Drive folder link for the whole day
   updated_by: string | null
   updated_at: string
 }

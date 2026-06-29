@@ -529,7 +529,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-sm text-amber-800">
             ⚠️ Showing sample data — the backend isn&rsquo;t connected. Set{' '}
             <code className="font-mono font-semibold">VITE_API_URL</code> to your
-            MongoDB API (see <code className="font-mono font-semibold">server/</code>)
+            backend (see <code className="font-mono font-semibold">DEPLOY-CPANEL.md</code>)
             to plan &amp; save real, shared content.
           </div>
         ) : null}

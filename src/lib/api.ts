@@ -15,10 +15,15 @@ import type {
 } from '../types/database'
 
 const RAW = import.meta.env.VITE_API_URL as string | undefined
-/** Base URL with any trailing slash removed (''  when not configured). */
-export const API_BASE = (RAW ?? '').trim().replace(/\/+$/, '')
-/** True once a backend URL is configured — unlocks real reading & editing. */
-export const isApiConfigured = API_BASE.length > 0
+// Same-origin mode: when VITE_SAME_ORIGIN is set, the API lives on the SAME
+// domain as the app (the cPanel PHP setup). API_BASE stays empty so requests go
+// to relative "/api/..." — portable to any domain without baking in a URL.
+const SAME = (import.meta.env.VITE_SAME_ORIGIN as string | undefined)?.toLowerCase()
+const sameOrigin = SAME === '1' || SAME === 'true'
+/** Base URL with any trailing slash removed ('' = same-origin or not configured). */
+export const API_BASE = sameOrigin ? '' : (RAW ?? '').trim().replace(/\/+$/, '')
+/** True once a backend is configured — unlocks real reading & editing. */
+export const isApiConfigured = sameOrigin || API_BASE.length > 0
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const isForm = init?.body instanceof FormData
@@ -53,6 +58,7 @@ export const api = {
   contentRange: (start: string, end: string) =>
     req<ContentItem[]>(`/api/content?${qs({ start, end })}`),
   contentByDate: (date: string) => req<ContentItem[]>(`/api/content?${qs({ date })}`),
+  allContent: () => req<ContentItem[]>(`/api/content`),
   grid: () => req<ContentItem[]>(`/api/content/grid`),
   createItem: (item: NewContentItem) =>
     req<ContentItem>(`/api/content`, { method: 'POST', body: JSON.stringify(item) }),
@@ -68,8 +74,11 @@ export const api = {
 
   // ── Day notes ──
   dayNote: (date: string) => req<DayNote | null>(`/api/day-notes/${date}`),
-  upsertDayNote: (date: string, note: string) =>
-    req<DayNote>(`/api/day-notes/${date}`, { method: 'PUT', body: JSON.stringify({ note }) }),
+  upsertDayNote: (date: string, note: string, drive_link: string | null = null) =>
+    req<DayNote>(`/api/day-notes/${date}`, {
+      method: 'PUT',
+      body: JSON.stringify({ note, drive_link }),
+    }),
 
   // ── Categories ──
   categories: () => req<Category[]>(`/api/categories`),
