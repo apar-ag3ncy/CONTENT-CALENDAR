@@ -1,19 +1,14 @@
-// Writes for categories, team members, the shared info note, and grid order.
+// Writes for categories, team members, the shared info note, and grid order
+// (via the MongoDB API).
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { collection, doc, addDoc, updateDoc, deleteDoc, setDoc, writeBatch } from 'firebase/firestore'
-import { db } from '../lib/firebase'
+import { api } from '../lib/api'
 
 // ---- Categories -------------------------------------------------------------
 
 export function useCreateCategory() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (cat: { name: string; color: string }) => {
-      await addDoc(collection(db, 'categories'), {
-        ...cat,
-        created_at: new Date().toISOString(),
-      })
-    },
+    mutationFn: (cat: { name: string; color: string }) => api.createCategory(cat),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['categories'] }),
   })
 }
@@ -21,15 +16,8 @@ export function useCreateCategory() {
 export function useUpdateCategory() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({
-      id,
-      patch,
-    }: {
-      id: string
-      patch: { name?: string; color?: string }
-    }) => {
-      await updateDoc(doc(db, 'categories', id), patch)
-    },
+    mutationFn: ({ id, patch }: { id: string; patch: { name?: string; color?: string } }) =>
+      api.updateCategory(id, patch),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['categories'] }),
   })
 }
@@ -37,9 +25,7 @@ export function useUpdateCategory() {
 export function useDeleteCategory() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (id: string) => {
-      await deleteDoc(doc(db, 'categories', id))
-    },
+    mutationFn: (id: string) => api.deleteCategory(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['categories'] }),
   })
 }
@@ -49,12 +35,7 @@ export function useDeleteCategory() {
 export function useCreateTeamMember() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (name: string) => {
-      await addDoc(collection(db, 'team_members'), {
-        name,
-        created_at: new Date().toISOString(),
-      })
-    },
+    mutationFn: (name: string) => api.createTeamMember(name),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['team_members'] }),
   })
 }
@@ -62,9 +43,7 @@ export function useCreateTeamMember() {
 export function useUpdateTeamMember() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, name }: { id: string; name: string }) => {
-      await updateDoc(doc(db, 'team_members', id), { name })
-    },
+    mutationFn: ({ id, name }: { id: string; name: string }) => api.updateTeamMember(id, name),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['team_members'] }),
   })
 }
@@ -72,9 +51,7 @@ export function useUpdateTeamMember() {
 export function useDeleteTeamMember() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (id: string) => {
-      await deleteDoc(doc(db, 'team_members', id))
-    },
+    mutationFn: (id: string) => api.deleteTeamMember(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['team_members'] })
       // assigned_to may reference this member — refresh content too.
@@ -89,13 +66,7 @@ export function useDeleteTeamMember() {
 export function useUpsertAppInfo() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (content: string) => {
-      await setDoc(
-        doc(db, 'app_info', 'main'),
-        { content, updated_at: new Date().toISOString() },
-        { merge: true },
-      )
-    },
+    mutationFn: (content: string) => api.upsertAppInfo(content),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['app_info'] }),
   })
 }
@@ -105,17 +76,7 @@ export function useUpsertAppInfo() {
 export function useReorderGrid() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (orderedIds: string[]) => {
-      // One atomic batch renumbers every position — never half-applied.
-      const batch = writeBatch(db)
-      orderedIds.forEach((id, i) => {
-        batch.update(doc(db, 'content_items', id), {
-          grid_position: i + 1,
-          updated_at: new Date().toISOString(),
-        })
-      })
-      await batch.commit()
-    },
+    mutationFn: (orderedIds: string[]) => api.reorderGrid(orderedIds),
     // Refetch on success AND error so the grid always snaps to the true
     // server order if a save fails partway.
     onSettled: () => {

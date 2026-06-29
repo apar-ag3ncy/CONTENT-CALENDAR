@@ -1,10 +1,9 @@
-// React Query hooks that fetch calendar data from Firestore for a date range.
-// When Firebase isn't configured yet, queries are disabled and the views fall
-// back to empty arrays so the calendar still renders (an empty preview).
+// React Query hooks that fetch calendar data for a date range. Reads from the
+// MongoDB API when configured, else the read-only demo seed (empty for the
+// collections the demo doesn't cover).
 import { useQuery } from '@tanstack/react-query'
-import { collection, getDocs, query, where } from 'firebase/firestore'
-import { db, isFirebaseConfigured } from '../lib/firebase'
 import { DEMO_MODE, demoItemsInRange } from '../lib/demoData'
+import { api } from '../lib/api'
 import type { ContentItem, SpecialDay, PeriodLock } from '../types/database'
 
 const EMPTY: never[] = []
@@ -14,33 +13,7 @@ export function useContentItems(startISO: string, endISO: string) {
     queryKey: ['content_items', startISO, endISO],
     queryFn: async (): Promise<ContentItem[]> => {
       if (DEMO_MODE) return demoItemsInRange(startISO, endISO)
-      const snap = await getDocs(
-        query(
-          collection(db, 'content_items'),
-          where('date', '>=', startISO),
-          where('date', '<=', endISO),
-        ),
-      )
-      const items = snap.docs.map(
-        (d) =>
-          ({ id: d.id, ...(d.data() as Record<string, unknown>) } as ContentItem),
-      )
-      // date asc, then grid_position asc (nulls last), then created_at asc.
-      items.sort((a, b) => {
-        if (a.date !== b.date) return a.date < b.date ? -1 : 1
-        const ag = a.grid_position
-        const bg = b.grid_position
-        if (ag !== bg) {
-          if (ag == null) return 1
-          if (bg == null) return -1
-          return ag - bg
-        }
-        const ac = a.created_at ?? ''
-        const bc = b.created_at ?? ''
-        if (ac !== bc) return ac < bc ? -1 : 1
-        return 0
-      })
-      return items
+      return api.contentRange(startISO, endISO)
     },
   })
 }
@@ -50,27 +23,7 @@ export function useSpecialDays(startISO: string, endISO: string) {
     queryKey: ['special_days', startISO, endISO],
     queryFn: async (): Promise<SpecialDay[]> => {
       if (DEMO_MODE) return []
-      const snap = await getDocs(
-        query(
-          collection(db, 'special_days'),
-          where('date', '>=', startISO),
-          where('date', '<=', endISO),
-        ),
-      )
-      const days = snap.docs.map(
-        (d) =>
-          ({ id: d.id, ...(d.data() as Record<string, unknown>) } as SpecialDay),
-      )
-      // date + created_at gives a stable order when two specials share a day,
-      // so specialDayMap() deterministically keeps the earliest-created one.
-      days.sort((a, b) => {
-        if (a.date !== b.date) return a.date < b.date ? -1 : 1
-        const ac = a.created_at ?? ''
-        const bc = b.created_at ?? ''
-        if (ac !== bc) return ac < bc ? -1 : 1
-        return 0
-      })
-      return days
+      return api.specialDays(startISO, endISO)
     },
   })
 }
@@ -80,21 +33,7 @@ export function usePeriodLocks(startISO: string, endISO: string) {
     queryKey: ['period_locks', startISO, endISO],
     queryFn: async (): Promise<PeriodLock[]> => {
       if (DEMO_MODE) return []
-      // Any lock that overlaps [startISO, endISO]. Firestore can't range two
-      // fields, so filter start_date <= endISO in the query and end_date >=
-      // startISO in JS.
-      const snap = await getDocs(
-        query(
-          collection(db, 'period_locks'),
-          where('start_date', '<=', endISO),
-        ),
-      )
-      return snap.docs
-        .map(
-          (d) =>
-            ({ id: d.id, ...(d.data() as Record<string, unknown>) } as PeriodLock),
-        )
-        .filter((l) => l.end_date >= startISO)
+      return api.locks(startISO, endISO)
     },
   })
 }

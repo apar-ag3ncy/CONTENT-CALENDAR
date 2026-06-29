@@ -3,7 +3,7 @@ import { CalendarToolbar } from '../components/CalendarToolbar'
 import { LockPill } from '../components/LockIndicators'
 import { FinalizeBar } from '../components/FinalizeBar'
 import { StatusChip, TypeChip } from '../components/ContentBadges'
-import { isFirebaseConfigured } from '../lib/firebase'
+import { isApiConfigured } from '../lib/api'
 import { useCalendarRange } from '../hooks/useCalendarData'
 import { groupByDate, isDateLocked, specialDayMap } from '../lib/calendar'
 import {
@@ -144,7 +144,7 @@ export default function WeekView() {
         startISO={startISO}
         endISO={endISO}
         locks={locks}
-        canEdit={isFirebaseConfigured}
+        canEdit={isApiConfigured}
       />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-7">

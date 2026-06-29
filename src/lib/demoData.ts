@@ -14,13 +14,15 @@ import type {
   MediaType,
   PostFormat,
 } from '../types/database'
+import { isApiConfigured } from './api'
 
 /**
- * Demo mode: serve the sample content below instead of hitting Firestore.
- * Forced ON because the Firestore database isn't live yet (queries would hang).
- * Set this to `false` once a working content database is connected.
+ * Demo mode serves the read-only sample content below instead of a live backend.
+ * It's ON automatically whenever no backend URL is configured (VITE_API_URL is
+ * unset). Set VITE_API_URL to your MongoDB API (see server/) and the app reads &
+ * writes real, shared data instead.
  */
-export const DEMO_MODE = true
+export const DEMO_MODE = !isApiConfigured
 
 /** The two review dates shown in the Grid Review page. */
 export const REVIEW_DATES = ['2026-07-02', '2026-07-03'] as const

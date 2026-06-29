@@ -20,7 +20,7 @@ export type ContentStatus =
 
 export type LockScope = 'month' | 'week' | 'range'
 
-/** One uploaded file (Firebase Storage). A carousel has several. */
+/** One uploaded file (stored in MongoDB GridFS). A carousel has several. */
 export interface MediaItem {
   url: string // public download URL
   path: string // storage path (for deletion)

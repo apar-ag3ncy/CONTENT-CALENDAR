@@ -7,7 +7,7 @@ import { useDayItems } from '../hooks/useDayData'
 import { useCategories } from '../hooks/useReferenceData'
 import { useTeamMembers } from '../hooks/useAdminData'
 import { useCreateItem, useUpdateItem } from '../hooks/useMutations'
-import { isFirebaseConfigured } from '../lib/firebase'
+import { isApiConfigured } from '../lib/api'
 import { humanError } from '../lib/errors'
 import {
   WEEKDAY_LONG,
@@ -92,10 +92,10 @@ export default function ComposeView() {
         </p>
       </div>
 
-      {!isFirebaseConfigured ? (
+      {!isApiConfigured ? (
         <div className="mx-auto max-w-2xl rounded-2xl border border-flame-200/70 bg-flame-50/70 px-4 py-2.5 text-sm text-flame-800 backdrop-blur">
-          ⚠️ Firebase isn&rsquo;t connected yet — you can fill this in, but it
-          won&rsquo;t save until the database is set up.
+          ⚠️ The backend isn&rsquo;t connected yet — you can fill this in, but it
+          won&rsquo;t save until <code>VITE_API_URL</code> is set (see server/).
         </div>
       ) : null}
 

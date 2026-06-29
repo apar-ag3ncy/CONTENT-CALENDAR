@@ -1,13 +1,10 @@
-// Create / edit / remove content items + save day notes.
+// Create / edit / remove content items + save day notes (via the MongoDB API).
 // On success we invalidate the calendar and day queries so every view refreshes.
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { collection, doc, addDoc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore'
-import { ref, deleteObject } from 'firebase/storage'
-import { db, storage } from '../lib/firebase'
+import { api, type NewContentItem } from '../lib/api'
 import type { ContentItem } from '../types/database'
 
-/** A content item ready to insert — server fills in id + timestamps. */
-export type NewContentItem = Omit<ContentItem, 'id' | 'created_at' | 'updated_at'>
+export type { NewContentItem }
 
 function useInvalidateContent() {
   const qc = useQueryClient()
@@ -22,15 +19,7 @@ function useInvalidateContent() {
 export function useCreateItem() {
   const invalidate = useInvalidateContent()
   return useMutation({
-    mutationFn: async (item: NewContentItem): Promise<ContentItem> => {
-      const now = new Date().toISOString()
-      const r = await addDoc(collection(db, 'content_items'), {
-        ...item,
-        created_at: now,
-        updated_at: now,
-      })
-      return { id: r.id, ...item, created_at: now, updated_at: now } as ContentItem
-    },
+    mutationFn: (item: NewContentItem): Promise<ContentItem> => api.createItem(item),
     onSuccess: invalidate,
   })
 }
@@ -38,18 +27,8 @@ export function useCreateItem() {
 export function useUpdateItem() {
   const invalidate = useInvalidateContent()
   return useMutation({
-    mutationFn: async ({
-      id,
-      patch,
-    }: {
-      id: string
-      patch: Partial<ContentItem>
-    }): Promise<void> => {
-      await updateDoc(doc(db, 'content_items', id), {
-        ...patch,
-        updated_at: new Date().toISOString(),
-      })
-    },
+    mutationFn: ({ id, patch }: { id: string; patch: Partial<ContentItem> }): Promise<ContentItem> =>
+      api.updateItem(id, patch),
     onSuccess: invalidate,
   })
 }
@@ -57,19 +36,8 @@ export function useUpdateItem() {
 export function useDeleteItem() {
   const invalidate = useInvalidateContent()
   return useMutation({
-    mutationFn: async ({
-      id,
-      mediaPaths,
-    }: {
-      id: string
-      mediaPaths?: string[]
-    }): Promise<void> => {
-      await deleteDoc(doc(db, 'content_items', id))
-      // Best-effort: remove uploaded files so they don't orphan in storage.
-      for (const p of mediaPaths ?? []) {
-        await deleteObject(ref(storage, p)).catch(() => {})
-      }
-    },
+    mutationFn: ({ id, mediaPaths }: { id: string; mediaPaths?: string[] }): Promise<void> =>
+      api.deleteItem(id, mediaPaths),
     onSuccess: invalidate,
   })
 }
@@ -77,20 +45,7 @@ export function useDeleteItem() {
 export function useUpsertDayNote() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({
-      date,
-      note,
-    }: {
-      date: string
-      note: string
-    }): Promise<void> => {
-      // Doc id === date, so this is an idempotent upsert.
-      await setDoc(
-        doc(db, 'day_notes', date),
-        { date, note, updated_at: new Date().toISOString() },
-        { merge: true },
-      )
-    },
+    mutationFn: ({ date, note }: { date: string; note: string }) => api.upsertDayNote(date, note),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['day_note', vars.date] })
     },

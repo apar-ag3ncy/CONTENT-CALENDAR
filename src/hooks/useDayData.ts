@@ -1,8 +1,8 @@
 // Data for a single Day page: that day's content items and its day-level note.
+// Reads from the MongoDB API when configured, else the read-only demo seed.
 import { useQuery } from '@tanstack/react-query'
-import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore'
-import { db, isFirebaseConfigured } from '../lib/firebase'
 import { DEMO_MODE, demoItemsForDate } from '../lib/demoData'
+import { api } from '../lib/api'
 import type { ContentItem, DayNote } from '../types/database'
 
 export function useDayItems(dateISO: string) {
@@ -10,28 +10,7 @@ export function useDayItems(dateISO: string) {
     queryKey: ['day_items', dateISO],
     queryFn: async (): Promise<ContentItem[]> => {
       if (DEMO_MODE) return demoItemsForDate(dateISO)
-      const snap = await getDocs(
-        query(collection(db, 'content_items'), where('date', '==', dateISO)),
-      )
-      const items = snap.docs.map(
-        (d) =>
-          ({ id: d.id, ...(d.data() as Record<string, unknown>) } as ContentItem),
-      )
-      // grid_position asc (nulls last), then created_at asc.
-      items.sort((a, b) => {
-        const ag = a.grid_position
-        const bg = b.grid_position
-        if (ag !== bg) {
-          if (ag == null) return 1
-          if (bg == null) return -1
-          return ag - bg
-        }
-        const ac = a.created_at ?? ''
-        const bc = b.created_at ?? ''
-        if (ac !== bc) return ac < bc ? -1 : 1
-        return 0
-      })
-      return items
+      return api.contentByDate(dateISO)
     },
   })
 }
@@ -41,10 +20,7 @@ export function useDayNote(dateISO: string) {
     queryKey: ['day_note', dateISO],
     queryFn: async (): Promise<DayNote | null> => {
       if (DEMO_MODE) return null
-      const snap = await getDoc(doc(db, 'day_notes', dateISO))
-      return snap.exists()
-        ? ({ date: dateISO, ...(snap.data() as Record<string, unknown>) } as DayNote)
-        : null
+      return api.dayNote(dateISO)
     },
   })
 }

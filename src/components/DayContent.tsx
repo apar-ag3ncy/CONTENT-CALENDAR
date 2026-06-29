@@ -24,7 +24,7 @@ import {
   useUpsertDayNote,
 } from '../hooks/useMutations'
 import { useNavigate } from 'react-router-dom'
-import { isFirebaseConfigured } from '../lib/firebase'
+import { isApiConfigured } from '../lib/api'
 import { humanError } from '../lib/errors'
 import type {
   ContentItem,
@@ -340,7 +340,7 @@ export function DayContent({ dateISO }: { dateISO: string }) {
     setNoteDraft(dayNote?.note ?? '')
   }, [dayNote?.note, dateISO])
 
-  const canEdit = isFirebaseConfigured
+  const canEdit = isApiConfigured
   const noteDirty = noteDraft !== (dayNote?.note ?? '')
 
   // Add / edit now open the dedicated compose page instead of a popup.
@@ -430,7 +430,7 @@ export function DayContent({ dateISO }: { dateISO: string }) {
           placeholder={
             canEdit
               ? 'e.g. Big festival push — keep captions cheerful.'
-              : 'Connect Firebase to add day notes.'
+              : 'Connect the backend to add day notes.'
           }
         />
         {canEdit ? (
@@ -471,7 +471,7 @@ export function DayContent({ dateISO }: { dateISO: string }) {
                   type="button"
                   onClick={() => openAdd(t)}
                   disabled={!canEdit}
-                  title={canEdit ? `Add a ${meta.label}` : 'Connect Firebase to add content'}
+                  title={canEdit ? `Add a ${meta.label}` : 'Connect the backend to add content'}
                   aria-label={`Add a ${meta.label}`}
                   className={`group glass-add min-h-[12.5rem] px-3 pb-5 pt-7 sm:min-h-[13.5rem] ${ADD_STAGGER[i]}`}
                 >

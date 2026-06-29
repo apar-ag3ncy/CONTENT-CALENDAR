@@ -12,7 +12,7 @@ import {
   useDeleteTeamMember,
   useUpsertAppInfo,
 } from '../hooks/useAdminMutations'
-import { isFirebaseConfigured } from '../lib/firebase'
+import { isApiConfigured } from '../lib/api'
 import { humanError } from '../lib/errors'
 import type { Category, TeamMember } from '../types/database'
 
@@ -125,7 +125,7 @@ function TeamMemberRow({
 }
 
 export default function SettingsView() {
-  const canEdit = isFirebaseConfigured
+  const canEdit = isApiConfigured
   const { hash } = useLocation()
 
   // Scroll to a section when linked via /settings#info etc.
@@ -227,8 +227,8 @@ export default function SettingsView() {
 
       {!canEdit ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
-          Connect Firebase (add your <code>.env.local</code> keys) to manage
-          categories, team members, and notes.
+          Showing sample data — connect the backend (set <code>VITE_API_URL</code>)
+          to manage categories, team members, and notes.
         </div>
       ) : null}
       {pageError ? (

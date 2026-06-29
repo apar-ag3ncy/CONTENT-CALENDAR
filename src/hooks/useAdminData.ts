@@ -1,8 +1,8 @@
 // Reads for the Categories & Info page and the Overview feed.
+// Uses the MongoDB API when configured, else the read-only demo seed.
 import { useQuery } from '@tanstack/react-query'
-import { collection, doc, getDoc, getDocs } from 'firebase/firestore'
-import { db, isFirebaseConfigured } from '../lib/firebase'
 import { DEMO_MODE, demoGridItems } from '../lib/demoData'
+import { api } from '../lib/api'
 import type { AppInfo, ContentItem, TeamMember } from '../types/database'
 
 export function useTeamMembers() {
@@ -10,18 +10,7 @@ export function useTeamMembers() {
     queryKey: ['team_members'],
     queryFn: async (): Promise<TeamMember[]> => {
       if (DEMO_MODE) return []
-      const snap = await getDocs(collection(db, 'team_members'))
-      const members = snap.docs.map(
-        (d) =>
-          ({ id: d.id, ...(d.data() as Record<string, unknown>) } as TeamMember),
-      )
-      members.sort((a, b) => {
-        const an = a.name ?? ''
-        const bn = b.name ?? ''
-        if (an !== bn) return an < bn ? -1 : 1
-        return 0
-      })
-      return members
+      return api.teamMembers()
     },
   })
 }
@@ -31,10 +20,7 @@ export function useAppInfo() {
     queryKey: ['app_info'],
     queryFn: async (): Promise<AppInfo | null> => {
       if (DEMO_MODE) return null
-      const snap = await getDoc(doc(db, 'app_info', 'main'))
-      return snap.exists()
-        ? ({ id: 'main', ...(snap.data() as Record<string, unknown>) } as AppInfo)
-        : null
+      return api.appInfo()
     },
   })
 }
@@ -45,26 +31,7 @@ export function useGridItems() {
     queryKey: ['grid_items'],
     queryFn: async (): Promise<ContentItem[]> => {
       if (DEMO_MODE) return demoGridItems()
-      const snap = await getDocs(collection(db, 'content_items'))
-      const items = snap.docs
-        .map(
-          (d) =>
-            ({ id: d.id, ...(d.data() as Record<string, unknown>) } as ContentItem),
-        )
-        .filter((it) => it.type === 'post' || it.type === 'reel')
-      // grid_position asc (nulls last), then date asc.
-      items.sort((a, b) => {
-        const ag = a.grid_position
-        const bg = b.grid_position
-        if (ag !== bg) {
-          if (ag == null) return 1
-          if (bg == null) return -1
-          return ag - bg
-        }
-        if (a.date !== b.date) return a.date < b.date ? -1 : 1
-        return 0
-      })
-      return items
+      return api.grid()
     },
   })
 }

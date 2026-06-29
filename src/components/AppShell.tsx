@@ -11,7 +11,7 @@ import {
   weekdayMonFirst,
 } from '../lib/dates'
 import { selectedDateFor } from './MonthIndex'
-import { isFirebaseConfigured } from '../lib/firebase'
+import { isApiConfigured } from '../lib/api'
 import { useDialog } from '../hooks/useDialog'
 
 // ---- header icons ----------------------------------------------------------
@@ -525,12 +525,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           onMobileMenu={() => setDrawerOpen(true)}
           onDesktopToggle={() => setCollapsed((c) => !c)}
         />
-        {!isFirebaseConfigured ? (
+        {!isApiConfigured ? (
           <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-sm text-amber-800">
-            ⚠️ Firebase isn&rsquo;t connected yet — showing an empty calendar. Add
-            your keys to{' '}
-            <code className="font-mono font-semibold">.env.local</code> (see the
-            README) to load and save content.
+            ⚠️ Showing sample data — the backend isn&rsquo;t connected. Set{' '}
+            <code className="font-mono font-semibold">VITE_API_URL</code> to your
+            MongoDB API (see <code className="font-mono font-semibold">server/</code>)
+            to plan &amp; save real, shared content.
           </div>
         ) : null}
         <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">

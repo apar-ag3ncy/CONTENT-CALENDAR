@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react'
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
-import { storage, isFirebaseConfigured } from '../lib/firebase'
+import { api, isApiConfigured } from '../lib/api'
 import type { MediaItem } from '../types/database'
 
 /** Re-export alias kept for compatibility with existing imports. */
@@ -29,9 +28,9 @@ const IconX = () => (
 
 /**
  * Reusable drag-and-drop / click-to-browse uploader. Uploads each file to the
- * Firebase Storage `media/` prefix and reports the download URL + storage path
- * back via onChange. Supports single or multiple files (e.g. Instagram
- * carousels) and renders a preview for each item with a remove (×) control.
+ * MongoDB backend (GridFS) and reports the served URL + storage path back via
+ * onChange. Supports single or multiple files (e.g. Instagram carousels) and
+ * renders a preview for each item with a remove (×) control.
  */
 export function DropZone({
   value,
@@ -59,27 +58,23 @@ export function DropZone({
   valueRef.current = value
   useEffect(() => () => void (mountedRef.current = false), [])
 
-  const canUpload = isFirebaseConfigured && !disabled && !uploading
+  const canUpload = isApiConfigured && !disabled && !uploading
 
   async function uploadOne(file: File): Promise<MediaItem | null> {
-    const ext = file.name.includes('.') ? file.name.split('.').pop() : 'bin'
-    const path = `media/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
-    const r = ref(storage, path)
-    await uploadBytes(r, file)
-    const url = await getDownloadURL(r)
+    const item = await api.uploadMedia(file)
     if (!mountedRef.current) {
       // Form was closed mid-upload — clean up the orphan instead of leaking it.
-      await deleteObject(ref(storage, path)).catch(() => {})
+      await api.deleteMedia(item.path).catch(() => {})
       return null
     }
-    sessionPaths.current.add(path)
-    return { url, path, name: file.name }
+    sessionPaths.current.add(item.path)
+    return item
   }
 
   async function handleFiles(files: File[]) {
     setError(null)
-    if (!isFirebaseConfigured) {
-      setError('Connect Firebase to upload files.')
+    if (!isApiConfigured) {
+      setError('Connect the backend (set VITE_API_URL) to upload files.')
       return
     }
     if (files.length === 0) return
@@ -115,9 +110,9 @@ export function DropZone({
     onChange(valueRef.current.filter((m) => m.path !== item.path))
     // Only delete from storage if WE uploaded it this session. A pre-existing
     // saved file is left alone so cancelling the edit can't strand a dead link.
-    if (sessionPaths.current.has(item.path) && isFirebaseConfigured) {
+    if (sessionPaths.current.has(item.path) && isApiConfigured) {
       sessionPaths.current.delete(item.path)
-      await deleteObject(ref(storage, item.path)).catch(() => {})
+      await api.deleteMedia(item.path).catch(() => {})
     }
   }
 
@@ -203,11 +198,11 @@ export function DropZone({
           {uploading ? 'Uploading…' : 'Drop files or browse'}
         </span>
         <span className="text-xs text-slate-400">
-          {isFirebaseConfigured
+          {isApiConfigured
             ? multiple
               ? 'Photos or videos — add as many as you like'
               : 'Photos or videos'
-            : 'Connect Firebase to upload files'}
+            : 'Connect the backend to upload files'}
         </span>
       </button>
       <input

@@ -4,7 +4,7 @@ import { FinalizeBar } from '../components/FinalizeBar'
 import { DayContent } from '../components/DayContent'
 import { selectedDateFor } from '../components/MonthIndex'
 import { useCalendarRange } from '../hooks/useCalendarData'
-import { isFirebaseConfigured } from '../lib/firebase'
+import { isApiConfigured } from '../lib/api'
 import {
   addMonths,
   endOfMonth,
@@ -62,7 +62,7 @@ export default function MonthView() {
         startISO={monthStartISO}
         endISO={monthEndISO}
         locks={locks}
-        canEdit={isFirebaseConfigured}
+        canEdit={isApiConfigured}
       />
 
       <DayContent dateISO={selected} />
