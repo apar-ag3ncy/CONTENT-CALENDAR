@@ -12,7 +12,34 @@ import {
 } from '../lib/dates'
 import { selectedDateFor } from './MonthIndex'
 import { isApiConfigured } from '../lib/api'
+import { toggleTheme, isDark } from '../lib/theme'
 import { useDialog } from '../hooks/useDialog'
+
+/** Light/dark switch for the navbar. */
+function ThemeToggle() {
+  const [dark, setDark] = useState(false)
+  useEffect(() => setDark(isDark()), [])
+  return (
+    <button
+      type="button"
+      onClick={() => setDark(toggleTheme() === 'dark')}
+      aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}
+      title={dark ? 'Light mode' : 'Dark mode'}
+      className="grid h-10 w-10 place-items-center rounded-full text-gray-500 transition hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/10"
+    >
+      {dark ? (
+        <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+        </svg>
+      ) : (
+        <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+        </svg>
+      )}
+    </button>
+  )
+}
 
 // ---- header icons ----------------------------------------------------------
 function IconMenu() {
@@ -308,7 +335,7 @@ function CalendarNav({
           </span>
           <span className="h-px flex-1 bg-slate-100" />
         </div>
-        <nav aria-label="Days" className="relative flex flex-col px-0.5">
+        <nav aria-label="Days" className="relative flex flex-col gap-2 px-0.5">
           {weekDays.map((date, i) => {
             const iso = toISODate(date)
             const active = selectedISO === iso
@@ -323,14 +350,13 @@ function CalendarNav({
                 style={{
                   backgroundColor: s.backgroundColor,
                   color: s.color,
-                  marginTop: i === 0 ? 0 : -8,
-                  zIndex: active ? 60 : i + 1,
+                  zIndex: active ? 60 : 1,
                   boxShadow: active
                     ? `inset 0 0 0 2px ${s.color}, 0 10px 22px -6px rgba(92, 20, 16, 0.55)`
-                    : '0 4px 10px -5px rgba(99, 29, 16, 0.5)',
+                    : '0 4px 10px -5px rgba(99, 29, 16, 0.4)',
                 }}
-                className={`relative flex items-center gap-2.5 rounded-full px-4 py-2.5 transition-transform ${
-                  active ? 'scale-[1.04] font-extrabold' : 'hover:translate-x-0.5'
+                className={`relative flex items-center gap-2.5 rounded-2xl px-4 py-3 transition-transform ${
+                  active ? 'scale-[1.03] font-extrabold' : 'hover:translate-x-0.5'
                 }`}
               >
                 <span className="w-9 flex-none text-[10px] font-bold uppercase tracking-wide opacity-70">
@@ -367,16 +393,16 @@ function Brand({ collapsed = false }: { collapsed?: boolean }) {
   return (
     <Link
       to="/"
-      className={`flex items-center ${collapsed ? 'justify-center' : 'gap-2.5'}`}
+      aria-label="Apar — Content Calendar"
+      className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3'}`}
     >
-      <span className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-flame-500 text-lg font-bold text-white shadow-sm">
-        C
-      </span>
+      {/* Orange logo on light, white logo on dark. */}
+      <img src="/apar-logo.svg" alt="Apar" className={`${collapsed ? 'h-6' : 'h-7'} w-auto dark:hidden`} />
+      <img src="/apar-logo-white.svg" alt="Apar" className={`${collapsed ? 'h-6' : 'h-7'} hidden w-auto dark:block`} />
       {!collapsed ? (
-        <div className="leading-tight">
-          <div className="text-sm font-bold text-gray-900">Chheda&rsquo;s × Apar</div>
-          <div className="text-[11px] text-gray-400">Content Calendar</div>
-        </div>
+        <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400 dark:text-gray-500">
+          Content<br />Calendar
+        </span>
       ) : null}
     </Link>
   )
@@ -390,7 +416,7 @@ function TopHeader({
   onDesktopToggle: () => void
 }) {
   return (
-    <header className="sticky top-0 z-20 border-b border-gray-200 bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-20 border-b border-gray-200 bg-white/90 backdrop-blur dark:border-white/10 dark:bg-[#171210]/90">
       <div className="flex h-16 items-center gap-3 px-4 lg:px-6">
         <button
           type="button"
@@ -425,19 +451,20 @@ function TopHeader({
         </div>
 
         <div className="ml-auto flex items-center gap-2">
+          <ThemeToggle />
           <button
             type="button"
             aria-label="Notifications"
-            className="relative grid h-10 w-10 place-items-center rounded-full text-gray-500 transition hover:bg-gray-100"
+            className="relative grid h-10 w-10 place-items-center rounded-full text-gray-500 transition hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/10"
           >
             <IconBell />
-            <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-brand-500 ring-2 ring-white" />
+            <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-brand-500 ring-2 ring-white dark:ring-[#171210]" />
           </button>
           <Link
             to="/settings#info"
-            className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition hover:bg-gray-100"
+            className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition hover:bg-gray-100 dark:hover:bg-white/10"
           >
-            <span className="grid h-8 w-8 place-items-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">
+            <span className="grid h-8 w-8 place-items-center rounded-full bg-brand-100 text-sm font-bold text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">
               A
             </span>
             <span className="hidden text-sm font-semibold text-gray-700 sm:block">Apar Team</span>
@@ -471,7 +498,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen">
       {/* Desktop sidebar — collapses to an icon rail */}
       <aside
-        className={`fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-gray-200/80 bg-white/85 backdrop-blur-xl transition-[width] duration-200 lg:flex ${
+        className={`fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-gray-200/80 bg-white/85 backdrop-blur-xl transition-[width] duration-200 dark:border-white/10 dark:bg-[#171210]/85 lg:flex ${
           collapsed ? 'w-20' : 'w-72'
         }`}
       >
@@ -496,7 +523,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             aria-modal="true"
             aria-label="Menu"
             tabIndex={-1}
-            className="absolute inset-y-0 left-0 flex w-72 max-w-[82%] flex-col bg-white shadow-xl outline-none"
+            className="absolute inset-y-0 left-0 flex w-72 max-w-[82%] flex-col bg-white shadow-xl outline-none dark:bg-[#171210]"
           >
             <div className="flex h-16 flex-none items-center justify-between border-b border-gray-200 px-6">
               <Brand />

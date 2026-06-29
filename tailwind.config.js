@@ -1,22 +1,23 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        // APAR red — primary accent used across buttons, headers, highlights.
+        // APAR orange-red (#EE3A24) — primary brand accent across the app.
         brand: {
-          DEFAULT: '#D62E14',
-          50: '#FEF3F0',
-          100: '#FBDDD4', // light red tint — special days
-          200: '#F6BCAB',
-          300: '#F0907A',
-          400: '#E96343',
-          500: '#E33A1E', // bright APAR red
-          600: '#D62E14', // main accent (buttons)
-          700: '#B32511',
-          800: '#8F2012',
-          900: '#751D13',
+          DEFAULT: '#EE3A24',
+          50: '#FEF2EF',
+          100: '#FBDCD5', // light tint — special days
+          200: '#F8BAA9',
+          300: '#F38C73',
+          400: '#F15C40',
+          500: '#EE3A24', // APAR orange-red
+          600: '#DC2E18', // main accent (buttons)
+          700: '#B82513',
+          800: '#931E12',
+          900: '#791C13',
         },
         // Warm orange — pairs with brand red for the red→orange "grainient" look.
         flame: {
@@ -37,19 +38,20 @@ export default {
         ink: '#21130F', // near-black warm brown
         // Shading for festivals / holidays / special days.
         special: '#FBDDD4',
-        // Deep bottle-green editorial palette (the "ZYRA" grid-review aesthetic).
+        // Warm charcoal/espresso editorial palette (Grid Review) — on-brand neutral
+        // that pairs with the orange accent and reads well in light AND dark mode.
         forest: {
-          50: '#EEF3F0',
-          100: '#D5E1DB',
-          200: '#A9C0B5',
-          300: '#7C9C8C',
-          400: '#517763',
-          500: '#315845',
-          600: '#214034', // primary panel green
-          700: '#1A3329',
-          800: '#13261E',
-          900: '#0D1B15',
-          DEFAULT: '#214034',
+          50: '#F7F4F2',
+          100: '#EAE3DD',
+          200: '#D4C7BC',
+          300: '#B4A294',
+          400: '#897463',
+          500: '#5D4B3E',
+          600: '#42342A', // primary panel
+          700: '#2E241D', // dark band
+          800: '#1F1813',
+          900: '#150F0C',
+          DEFAULT: '#2E241D',
         },
         // Soft champagne-gold hairline accent for the editorial frames.
         champagne: '#C9B68C',

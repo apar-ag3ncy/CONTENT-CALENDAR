@@ -389,3 +389,82 @@ body {
 .glass-add {
   will-change: transform;
 }
+
+/* ════════════════════════ DARK THEME ════════════════════════
+   Class-based (`.dark` on <html>). Most surfaces use a small set of shared
+   classes (.card / .glass-* / .pin-card) or common utilities (bg-white,
+   text-slate-*, border-slate-*); overriding those here flips the whole app to
+   a warm charcoal dark mode without touching every component. `.dark .x` wins
+   over `.x` on specificity, so source order doesn't matter. */
+.dark body {
+  color: #d8cfc5;
+  background-color: #0f0b08;
+  background-image:
+    radial-gradient(58rem 58rem at 110% -12%, rgba(238, 58, 36, 0.16), transparent 60%),
+    radial-gradient(50rem 50rem at -12% 4%, rgba(238, 58, 36, 0.08), transparent 55%),
+    radial-gradient(72rem 52rem at 50% 126%, rgba(248, 127, 35, 0.1), transparent 62%);
+}
+
+/* Surfaces — cards sit clearly above the near-black body. */
+.dark .card {
+  background-color: #2b221a;
+  border-color: #4a3f35;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 18px 36px -24px rgba(0, 0, 0, 0.85);
+}
+.dark .pin-card {
+  background-color: rgba(43, 34, 26, 0.97);
+  --tw-ring-color: rgba(255, 255, 255, 0.08);
+}
+.dark .glass-add,
+.dark .glass-panel,
+.dark .glass-form {
+  --tw-ring-color: rgba(255, 255, 255, 0.08);
+  background-image: linear-gradient(
+    160deg,
+    rgba(48, 38, 31, 0.92) 0%,
+    rgba(40, 30, 24, 0.85) 42%,
+    rgba(238, 58, 36, 0.16) 100%
+  );
+}
+.dark .glass-field {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Text utilities */
+.dark .text-slate-900, .dark .text-gray-900 { color: #f3eee8; }
+.dark .text-slate-800 { color: #e8e1d9; }
+.dark .text-slate-700, .dark .text-gray-700 { color: #d8cfc5; }
+.dark .text-slate-600, .dark .text-gray-600 { color: #beb4a8; }
+.dark .text-slate-500, .dark .text-gray-500 { color: #a59a8d; }
+.dark .text-slate-400, .dark .text-gray-400 { color: #897e71; }
+.dark .text-slate-300, .dark .text-gray-300 { color: #6f655a; }
+/* Grid Review (forest) text on dark cards */
+.dark .text-forest-800 { color: #f1ece6; }
+.dark .text-forest-700 { color: #e6ddd4; }
+.dark .text-forest-600 { color: #d2c7bb; }
+.dark .text-forest-500 { color: #b3a799; }
+.dark .text-forest-400 { color: #9b8f81; }
+
+/* Background utilities (solid only — opacity variants handled per-component) */
+.dark .bg-white { background-color: #2b221a; }
+.dark .bg-slate-50, .dark .bg-gray-50 { background-color: #1c1611; }
+.dark .bg-slate-100, .dark .bg-gray-100 { background-color: #322a22; }
+.dark .bg-brand-50 { background-color: rgba(238, 58, 36, 0.14); }
+.dark .bg-forest-50, .dark .bg-forest-100 { background-color: #322a22; }
+.dark .bg-cream\/40 { background-color: rgba(255, 255, 255, 0.04); }
+
+/* Borders + rings */
+.dark .border-slate-200, .dark .border-gray-200 { border-color: #423830; }
+.dark .border-slate-100, .dark .border-gray-100 { border-color: #362e27; }
+.dark .border-forest-100 { border-color: #392f28; }
+.dark .ring-forest-100 { --tw-ring-color: #38302a; }
+.dark .ring-brand-100 { --tw-ring-color: rgba(238, 58, 36, 0.3); }
+
+/* Form fields on dark */
+.dark input::placeholder,
+.dark textarea::placeholder { color: #7d7264; }
+.dark .disabled\:bg-slate-50:disabled { background-color: #1d1713; }
+
+/* Keep these intentionally-dark/coloured heroes as-is in dark mode:
+   .grainient, .compose-canvas already render dark; no override needed. */
