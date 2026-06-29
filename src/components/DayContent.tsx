@@ -11,6 +11,7 @@ import {
   POST_FORMAT_META,
   STATUS_META,
   STATUS_ORDER,
+  statusMeta,
 } from '../lib/contentMeta'
 import { ConfirmDialog } from './ConfirmDialog'
 import { Reveal } from './Reveal'
@@ -235,7 +236,7 @@ function TypeChipInline({ type }: { type: ContentType }) {
 }
 
 function StatusChipInline({ status }: { status: ContentStatus }) {
-  const meta = STATUS_META[status]
+  const meta = statusMeta(status)
   return (
     <span
       className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${meta.chip}`}

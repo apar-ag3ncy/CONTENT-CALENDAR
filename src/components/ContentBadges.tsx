@@ -2,7 +2,7 @@ import type { ContentItem, ContentType, ContentStatus } from '../types/database'
 import {
   CONTENT_TYPE_META,
   CONTENT_TYPE_ORDER,
-  STATUS_META,
+  statusMeta,
 } from '../lib/contentMeta'
 import { countByType } from '../lib/calendar'
 
@@ -40,7 +40,7 @@ export function TypeChip({ type }: { type: ContentType }) {
 }
 
 export function StatusChip({ status }: { status: ContentStatus }) {
-  const meta = STATUS_META[status]
+  const meta = statusMeta(status)
   return (
     <span
       className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${meta.chip}`}

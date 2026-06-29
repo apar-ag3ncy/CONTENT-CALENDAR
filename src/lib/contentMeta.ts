@@ -62,3 +62,16 @@ export const STATUS_META: Record<
   posted: { label: 'Posted', chip: 'bg-emerald-100 text-emerald-800' },
   backup: { label: 'Backup', chip: 'bg-amber-100 text-amber-800' },
 }
+
+/**
+ * Safe status lookup. Items created before the status model changed may carry
+ * legacy values (e.g. "idea"); fall back gracefully instead of crashing.
+ */
+export function statusMeta(status: string): { label: string; chip: string } {
+  return (
+    STATUS_META[status as ContentStatus] ?? {
+      label: status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Unknown',
+      chip: 'bg-slate-100 text-slate-600',
+    }
+  )
+}

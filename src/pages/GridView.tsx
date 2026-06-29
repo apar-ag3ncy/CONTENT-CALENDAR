@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAllContent } from '../hooks/useAdminData'
-import { STATUS_META } from '../lib/contentMeta'
+import { statusMeta } from '../lib/contentMeta'
 import { parseISODate } from '../lib/dates'
 import type { ContentItem, MediaItem } from '../types/database'
 
@@ -110,7 +110,7 @@ function TypeTag({ label, glyph }: { label: string; glyph?: () => JSX.Element })
 }
 
 function StatusChip({ item }: { item: ContentItem }) {
-  const meta = STATUS_META[item.status]
+  const meta = statusMeta(item.status)
   return (
     <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] ${meta.chip}`}>
       {meta.label}
@@ -563,8 +563,8 @@ function StoryCard({ item }: { item: ContentItem }) {
         ) : null}
         <div className="absolute inset-x-0 bottom-0 p-2.5">
           <p className="truncate font-serif text-sm font-semibold text-cream">{item.title}</p>
-          <span className={`mt-1 inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase ${STATUS_META[item.status].chip}`}>
-            {STATUS_META[item.status].label}
+          <span className={`mt-1 inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase ${statusMeta(item.status).chip}`}>
+            {statusMeta(item.status).label}
           </span>
         </div>
       </div>
