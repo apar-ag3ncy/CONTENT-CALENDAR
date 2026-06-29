@@ -375,17 +375,18 @@ function CalendarNav({
   )
 }
 
-/** Dark→light APAR-red ramp for the stacked day pills (top dark, bottom light). */
+/** APAR-orange ramp for the stacked day pills: vivid brand orange at the top,
+ *  fading to a light warm-peach tint at the bottom. */
 function dayPillStyle(t: number): { backgroundColor: string; color: string } {
-  const top = [0x6b, 0x1a, 0x10] // deep brand red
-  const bot = [0xfb, 0xdd, 0xd4] // brand-100, almost blush
+  const top = [0xee, 0x3a, 0x24] // brand-500 — the Apar orange
+  const bot = [0xfd, 0xe3, 0xd6] // light warm-peach tint
   const r = Math.round(top[0] + (bot[0] - top[0]) * t)
   const g = Math.round(top[1] + (bot[1] - top[1]) * t)
   const b = Math.round(top[2] + (bot[2] - top[2]) * t)
   const lum = 0.299 * r + 0.587 * g + 0.114 * b
   return {
     backgroundColor: `rgb(${r}, ${g}, ${b})`,
-    color: lum > 150 ? '#5c1410' : '#ffffff',
+    color: lum > 165 ? '#7a1c0e' : '#ffffff',
   }
 }
 
