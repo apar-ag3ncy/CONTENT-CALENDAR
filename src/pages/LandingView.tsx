@@ -14,6 +14,17 @@ const LABELS = [
   { t: 'Schedule', x: '63%', y: '80%' },
 ]
 
+/** Circuit-trace paths (viewBox 0 0 100 100); light pulses run along these. */
+const TRACES = [
+  'M30 47 H44 V58',
+  'M63 57 H55 V60',
+  'M33 63 H46 V60',
+  'M8 64 H22 V58 H40',
+  'M75 30 V42 H62',
+  'M63 80 V70 H52',
+  'M46 86 V78 H56',
+]
+
 export default function LandingView() {
   const monthHref = `/month/${monthKey(new Date())}`
   const NAV = [
@@ -30,46 +41,45 @@ export default function LandingView() {
       <div aria-hidden className="absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-[#0a0604]" />
 
-        {/* molten floor of the flame */}
+        {/* soft ambient under-glow (right-weighted, like the reference) */}
         <div
           className="absolute inset-0"
           style={{
             backgroundImage:
-              'linear-gradient(to top, rgba(241,96,1,0.42) 0%, rgba(150,40,10,0.16) 24%, transparent 52%)',
+              'radial-gradient(58% 60% at 86% 102%, rgba(241,96,1,0.42), transparent 62%), radial-gradient(46% 52% at 8% 102%, rgba(255,150,52,0.5), rgba(241,96,1,0.2) 46%, transparent 72%), linear-gradient(to top, rgba(241,96,1,0.32) 0%, rgba(150,40,10,0.12) 22%, transparent 48%)',
           }}
         />
-        {/* bottom-left lava root */}
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage:
-              'radial-gradient(40% 42% at 6% 100%, rgba(255,150,52,0.78), rgba(241,96,1,0.34) 44%, transparent 72%)',
-          }}
-        />
-        {/* warm haze on the right, softening the peak into the floor */}
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage:
-              'radial-gradient(72% 92% at 90% 98%, rgba(241,96,1,0.42), transparent 60%)',
-          }}
-        />
-        {/* the smooth flowing flame crest — a luminous ridge sweeping bottom-left → upper-right */}
-        <div
-          className="absolute inset-0 mix-blend-screen"
-          style={{
-            backgroundImage:
-              'linear-gradient(118deg, transparent 28%, rgba(255,150,55,0.22) 43%, rgba(255,216,152,0.82) 52%, rgba(255,150,55,0.46) 59%, rgba(214,46,20,0.18) 68%, transparent 84%)',
-          }}
-        />
-        {/* flame peak bloom, upper-right */}
-        <div
-          className="absolute inset-0 mix-blend-screen"
-          style={{
-            backgroundImage:
-              'radial-gradient(48% 70% at 96% 24%, rgba(255,176,72,0.7), rgba(241,96,1,0.3) 42%, transparent 64%)',
-          }}
-        />
+
+        {/* ── Flowing fire — fractal-noise displaced fire gradient that rises, falls & flickers ── */}
+        <svg className="absolute inset-0 h-full w-full" preserveAspectRatio="none" aria-hidden>
+          <defs>
+            <linearGradient id="fireGrad" x1="0" y1="1" x2="0" y2="0">
+              <stop offset="0%" stopColor="#fff6dc" />
+              <stop offset="15%" stopColor="#ffd589" />
+              <stop offset="33%" stopColor="#fb8420" />
+              <stop offset="54%" stopColor="#ef4a12" />
+              <stop offset="76%" stopColor="#a52c0c" stopOpacity="0.55" />
+              <stop offset="100%" stopColor="#2a0d04" stopOpacity="0" />
+            </linearGradient>
+            <filter id="fireA" x="-25%" y="-25%" width="150%" height="150%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.008 0.014" numOctaves="2" seed="4" result="n">
+                <animate attributeName="baseFrequency" dur="15s" values="0.008 0.014;0.011 0.021;0.008 0.014" repeatCount="indefinite" />
+              </feTurbulence>
+              <feDisplacementMap in="SourceGraphic" in2="n" scale="66" xChannelSelector="R" yChannelSelector="G" />
+              <feGaussianBlur stdDeviation="0.7" />
+            </filter>
+            <filter id="fireB" x="-25%" y="-25%" width="150%" height="150%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.011 0.019" numOctaves="2" seed="11" result="n2">
+                <animate attributeName="baseFrequency" dur="19s" values="0.011 0.019;0.014 0.027;0.011 0.019" repeatCount="indefinite" />
+              </feTurbulence>
+              <feDisplacementMap in="SourceGraphic" in2="n2" scale="46" xChannelSelector="R" yChannelSelector="G" />
+            </filter>
+          </defs>
+          <g style={{ mixBlendMode: 'screen' }}>
+            <rect className="fire-rise" x="-12%" y="34%" width="124%" height="92%" fill="url(#fireGrad)" filter="url(#fireA)" />
+            <rect className="fire-rise-2" x="-12%" y="40%" width="124%" height="86%" fill="url(#fireGrad)" filter="url(#fireB)" opacity="0.82" />
+          </g>
+        </svg>
 
         {/* weight the glow to the right (dark left, like the reference) */}
         <div
@@ -79,23 +89,23 @@ export default function LandingView() {
               'linear-gradient(to right, rgba(8,5,3,0.82) 0%, rgba(8,5,3,0.34) 24%, transparent 48%)',
           }}
         />
-        {/* whisper of vertical panel hairlines (subtle — fades out toward the top) */}
+        {/* dark vertical slats (static) — the fire glows through the gaps, striped like the reference */}
         <div
           className="absolute inset-0"
           style={{
             backgroundImage:
-              'repeating-linear-gradient(90deg, transparent 0 44px, rgba(0,0,0,0.2) 44px 45px, transparent 45px 46px)',
-            maskImage: 'linear-gradient(to top, black 58%, transparent 92%)',
-            WebkitMaskImage: 'linear-gradient(to top, black 58%, transparent 92%)',
+              'repeating-linear-gradient(90deg, rgba(6,3,1,0.62) 0 40px, rgba(6,3,1,0) 40px 76px)',
+            maskImage: 'linear-gradient(to top, black 62%, transparent 95%)',
+            WebkitMaskImage: 'linear-gradient(to top, black 62%, transparent 95%)',
           }}
         />
         <div
           className="absolute inset-0"
           style={{
             backgroundImage:
-              'repeating-linear-gradient(90deg, transparent 0 22px, rgba(255,255,255,0.045) 22px 23px, transparent 23px 45px)',
-            maskImage: 'linear-gradient(to top, black 60%, transparent 95%)',
-            WebkitMaskImage: 'linear-gradient(to top, black 60%, transparent 95%)',
+              'repeating-linear-gradient(90deg, transparent 0 74px, rgba(255,214,150,0.06) 74px 76px)',
+            maskImage: 'linear-gradient(to top, black 62%, transparent 95%)',
+            WebkitMaskImage: 'linear-gradient(to top, black 62%, transparent 95%)',
           }}
         />
         {/* soft vignette to focus the glow (premium framing) */}
@@ -107,22 +117,39 @@ export default function LandingView() {
           }}
         />
 
-        {/* circuit traces converging toward the orb */}
+        {/* circuit traces — faint base lines + a light pulse running along each */}
         <svg
-          className="absolute inset-0 h-full w-full opacity-25"
+          className="absolute inset-0 h-full w-full"
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
           fill="none"
-          stroke="#ff9a4d"
-          strokeWidth="1"
         >
-          <path d="M30 47 H44 V58" vectorEffect="non-scaling-stroke" />
-          <path d="M63 57 H55 V60" vectorEffect="non-scaling-stroke" />
-          <path d="M33 63 H46 V60" vectorEffect="non-scaling-stroke" />
-          <path d="M8 64 H22 V58 H40" vectorEffect="non-scaling-stroke" />
-          <path d="M75 30 V42 H62" vectorEffect="non-scaling-stroke" />
-          <path d="M63 80 V70 H52" vectorEffect="non-scaling-stroke" />
-          <path d="M46 86 V78 H56" vectorEffect="non-scaling-stroke" />
+          <defs>
+            <filter id="traceGlow" x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur stdDeviation="0.7" result="b" />
+              <feMerge>
+                <feMergeNode in="b" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+          <g stroke="#ff9a4d" strokeWidth="1" opacity="0.22">
+            {TRACES.map((d, i) => (
+              <path key={`b${i}`} d={d} vectorEffect="non-scaling-stroke" />
+            ))}
+          </g>
+          <g stroke="#ffe2b0" strokeWidth="1.5" strokeLinecap="round" filter="url(#traceGlow)">
+            {TRACES.map((d, i) => (
+              <path
+                key={`p${i}`}
+                d={d}
+                pathLength={200}
+                vectorEffect="non-scaling-stroke"
+                className="trace-pulse"
+                style={{ animationDelay: `${i * 0.55}s` }}
+              />
+            ))}
+          </g>
         </svg>
 
         {/* top darkening so the headline stays crisp */}
@@ -231,7 +258,10 @@ export default function LandingView() {
               className="landing-in inline-flex items-center whitespace-nowrap text-[11px] font-medium tracking-wide text-white/45"
               style={{ animationDelay: `${0.8 + i * 0.05}s` }}
             >
-              <span className="mr-1.5 inline-block h-1 w-1 rounded-full bg-flame-400 shadow-[0_0_7px_rgba(248,127,35,0.95)]" />
+              <span
+                className="mr-1.5 inline-block h-1 w-1 rounded-full bg-flame-400 shadow-[0_0_7px_rgba(248,127,35,0.95)]"
+                style={{ animation: `node-pulse 3.4s ease-in-out ${i * 0.4}s infinite` }}
+              />
               {l.t}
             </span>
           </span>

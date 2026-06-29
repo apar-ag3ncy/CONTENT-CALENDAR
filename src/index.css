@@ -10,13 +10,15 @@ body,
 
 body {
   @apply text-slate-700 antialiased;
-  background-color: #fafafa;
-  /* Warm ambient wash — orange glow top-right, red mid-left, amber bottom.
-     Low opacity so cards stay crisp; fixed so it doesn't scroll. */
+  background-color: #fbf2ea;
+  /* Warm dark-orange ambient gradient — deep orange glow top-right + bottom,
+     red mid-left. Kept light enough that white cards stay crisp; fixed so it
+     doesn't scroll. */
   background-image:
-    radial-gradient(52rem 52rem at 108% -10%, rgba(241, 96, 1, 0.1), transparent 60%),
-    radial-gradient(46rem 46rem at -10% 6%, rgba(214, 46, 20, 0.06), transparent 55%),
-    radial-gradient(44rem 44rem at 50% 122%, rgba(248, 127, 35, 0.06), transparent 55%);
+    radial-gradient(58rem 58rem at 110% -12%, rgba(232, 80, 2, 0.2), transparent 60%),
+    radial-gradient(50rem 50rem at -12% 4%, rgba(214, 46, 20, 0.1), transparent 55%),
+    radial-gradient(72rem 52rem at 50% 126%, rgba(225, 56, 12, 0.16), transparent 62%),
+    linear-gradient(180deg, rgba(248, 127, 35, 0.05) 0%, transparent 30%);
   background-attachment: fixed;
 }
 
@@ -243,6 +245,62 @@ body {
 }
 .toast-in {
   animation: toast-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ── Landing hero "flowing flame" background animation ──
+   Slow GPU-only (transform/opacity) drifts so the molten glow breathes and
+   licks upward; light pulses run along the circuit traces toward the centre. */
+@keyframes flame-breathe {
+  0%, 100% { opacity: 0.82; transform: translate3d(0, 0, 0) scale(1); }
+  50% { opacity: 1; transform: translate3d(0, -2%, 0) scale(1.07); }
+}
+@keyframes flame-drift-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.04); }
+  50% { transform: translate3d(-3%, -4%, 0) scale(1.12); }
+}
+@keyframes flame-drift-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.06); }
+  50% { transform: translate3d(4%, -3%, 0) scale(1); }
+}
+@keyframes crest-sweep {
+  0%, 100% { transform: translate3d(-2%, 1.5%, 0) rotate(0.001deg); opacity: 0.85; }
+  50% { transform: translate3d(3%, -2%, 0) rotate(0.001deg); opacity: 1; }
+}
+@keyframes flame-flicker {
+  0%, 100% { opacity: 0.5; }
+  25% { opacity: 0.85; }
+  50% { opacity: 0.62; }
+  75% { opacity: 0.95; }
+}
+@keyframes node-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.7); }
+}
+/* A short bright dash runs along each trace (paths use pathLength="200"). */
+@keyframes trace-flow {
+  from { stroke-dashoffset: 200; }
+  to { stroke-dashoffset: 0; }
+}
+/* Flowing fire: the noise-displaced fire gradient rises & falls (breathes). */
+@keyframes fire-rise {
+  0%, 100% { transform: translateY(4%) scaleY(0.97); }
+  50% { transform: translateY(-5%) scaleY(1.09); }
+}
+@keyframes fire-rise-2 {
+  0%, 100% { transform: translateY(-3%) scaleY(1.07); }
+  50% { transform: translateY(6%) scaleY(0.95); }
+}
+.fire-rise { animation: fire-rise 8s ease-in-out infinite; transform-origin: bottom; will-change: transform; }
+.fire-rise-2 { animation: fire-rise-2 11.5s ease-in-out infinite; transform-origin: bottom; will-change: transform; }
+.flame-breathe { animation: flame-breathe 9s ease-in-out infinite; will-change: transform, opacity; }
+.flame-drift-a { animation: flame-drift-a 13s ease-in-out infinite; will-change: transform; }
+.flame-drift-b { animation: flame-drift-b 17s ease-in-out infinite; will-change: transform; }
+.crest-sweep { animation: crest-sweep 11s ease-in-out infinite; will-change: transform, opacity; }
+.flame-flicker { animation: flame-flicker 6s ease-in-out infinite; }
+.trace-pulse {
+  stroke-dasharray: 6 194;
+  animation: trace-flow 3.2s linear infinite;
+  will-change: stroke-dashoffset;
 }
 
 /* Landing-page entrance — reliable CSS fade-up (reduced-motion shortens it to instant). */

@@ -34,3 +34,7 @@ logs
 
 # vercel
 .vercel
+
+# local animation reference (do not commit)
+public/ref.mov
+public/ref.html
