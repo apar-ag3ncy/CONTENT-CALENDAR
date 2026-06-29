@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { api, isApiConfigured } from '../lib/api'
+import { toast } from '../lib/toast'
 import type { MediaItem } from '../types/database'
 
 /** Re-export alias kept for compatibility with existing imports. */
@@ -56,7 +57,13 @@ export function DropZone({
   // several files resolve back-to-back.
   const valueRef = useRef(value)
   valueRef.current = value
-  useEffect(() => () => void (mountedRef.current = false), [])
+  useEffect(() => {
+    // Re-set on mount so a StrictMode remount doesn't leave us flagged unmounted.
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   const canUpload = isApiConfigured && !disabled && !uploading
 
@@ -87,11 +94,13 @@ export function DropZone({
         if (!mountedRef.current || !item) return
         const base = multiple ? valueRef.current : []
         onChange([...base, item])
+        // Notify (top-right) once the file is stored in MongoDB.
+        toast.success('Added successfully', `“${file.name}” saved to MongoDB.`)
       }
     } catch (e) {
-      if (mountedRef.current) {
-        setError(e instanceof Error ? e.message : 'Upload failed. Please try again.')
-      }
+      const msg = e instanceof Error ? e.message : 'Upload failed. Please try again.'
+      if (mountedRef.current) setError(msg)
+      toast.error('Couldn’t add — try again', msg)
     } finally {
       if (mountedRef.current) setUploading(false)
     }
