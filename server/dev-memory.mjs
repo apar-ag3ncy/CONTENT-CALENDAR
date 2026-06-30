@@ -11,6 +11,9 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { createApp } from './app.js'
 import { seedDatabase } from './seed.js'
+import { ensureDefaultAdmin } from './auth.js'
+
+const DEV_ADMIN = { email: 'admin@apar.agency', password: 'admin1234', name: 'Apar Admin' }
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const port = Number(process.env.PORT || 4000)
@@ -29,10 +32,13 @@ const n = await seedDatabase(db, bucket, {
   log: (m) => console.log(m),
 })
 
+await ensureDefaultAdmin(db, DEV_ADMIN)
+
 const app = createApp({ db, bucket })
 app.listen(port, () => {
   console.log(`\n✓ DEV API (in-memory MongoDB, ${n} items seeded) on http://localhost:${port}`)
-  console.log('  Point the frontend at it:  VITE_API_URL=http://localhost:' + port + '  in .env.local\n')
+  console.log('  Point the frontend at it:  VITE_API_URL=http://localhost:' + port + '  in .env.local')
+  console.log(`  Sign in with:  ${DEV_ADMIN.email}  /  ${DEV_ADMIN.password}  (admin)\n`)
 })
 
 for (const sig of ['SIGINT', 'SIGTERM']) {

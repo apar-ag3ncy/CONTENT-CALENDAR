@@ -8,6 +8,7 @@ import express from 'express'
 import cors from 'cors'
 import multer from 'multer'
 import { ObjectId } from 'mongodb'
+import { makeAuth, comparePassword, hashPassword, signToken, publicUser } from './auth.js'
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -65,6 +66,11 @@ export function createApp({ db, bucket }) {
   app.use(cors())
   app.use(express.json({ limit: '4mb' }))
 
+  // ── Auth + role gates (self-filter to /api/*; public: health, login, media GET) ──
+  const { users, authGate, roleGate } = makeAuth(db)
+  app.use(authGate)
+  app.use(roleGate)
+
   const content = db.collection('content_items')
   const dayNotes = db.collection('day_notes')
   const categories = db.collection('categories')
@@ -84,6 +90,79 @@ export function createApp({ db, bucket }) {
   const nowISO = () => new Date().toISOString()
 
   app.get('/api/health', (_req, res) => res.json({ ok: true, time: nowISO() }))
+
+  // ───────────────────────── Auth ─────────────────────────
+  app.post(
+    '/api/auth/login',
+    wrap(async (req, res) => {
+      const email = String(req.body?.email || '').toLowerCase().trim()
+      const password = String(req.body?.password || '')
+      const user = await users.findOne({ email })
+      if (!user || !(await comparePassword(password, user.passwordHash))) {
+        return res.status(401).json({ error: 'Wrong email or password.' })
+      }
+      res.json({ token: signToken(user), user: publicUser(user) })
+    }),
+  )
+  app.get('/api/auth/me', wrap(async (req, res) => res.json(publicUser(req.user))))
+
+  // ───────────────────────── Users (admin only) ─────────────────────────
+  app.get(
+    '/api/users',
+    wrap(async (req, res) => {
+      if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' })
+      const list = await users.find().toArray()
+      list.sort(byName)
+      res.json(list.map(publicUser))
+    }),
+  )
+  app.post(
+    '/api/users',
+    wrap(async (req, res) => {
+      const email = String(req.body?.email || '').toLowerCase().trim()
+      const password = String(req.body?.password || '')
+      const name = String(req.body?.name || '')
+      const role = req.body?.role === 'admin' ? 'admin' : 'manager'
+      if (!email || !password) return res.status(400).json({ error: 'Email and password are required.' })
+      if (await users.findOne({ email })) return res.status(409).json({ error: 'That email already has an account.' })
+      const doc = { email, name, role, passwordHash: await hashPassword(password), created_at: nowISO() }
+      const r = await users.insertOne(doc)
+      res.status(201).json(publicUser({ _id: r.insertedId, ...doc }))
+    }),
+  )
+  app.patch(
+    '/api/users/:id',
+    wrap(async (req, res) => {
+      const _id = oid(req.params.id)
+      if (!_id) return res.status(400).json({ error: 'Invalid id' })
+      const patch = {}
+      if (req.body?.name !== undefined) patch.name = String(req.body.name)
+      if (req.body?.role !== undefined) patch.role = req.body.role === 'admin' ? 'admin' : 'manager'
+      if (req.body?.password) patch.passwordHash = await hashPassword(req.body.password)
+      if (patch.role === 'manager') {
+        const target = await users.findOne({ _id })
+        if (target?.role === 'admin' && (await users.countDocuments({ role: 'admin' })) <= 1) {
+          return res.status(400).json({ error: 'Can’t remove the last admin.' })
+        }
+      }
+      await users.updateOne({ _id }, { $set: patch })
+      res.json(publicUser(await users.findOne({ _id })))
+    }),
+  )
+  app.delete(
+    '/api/users/:id',
+    wrap(async (req, res) => {
+      const _id = oid(req.params.id)
+      if (!_id) return res.status(400).json({ error: 'Invalid id' })
+      if (String(req.user._id) === String(_id)) return res.status(400).json({ error: 'You can’t delete your own account.' })
+      const target = await users.findOne({ _id })
+      if (target?.role === 'admin' && (await users.countDocuments({ role: 'admin' })) <= 1) {
+        return res.status(400).json({ error: 'Can’t delete the last admin.' })
+      }
+      await users.deleteOne({ _id })
+      res.status(204).end()
+    }),
+  )
 
   // ───────────────────────── Content items ─────────────────────────
   // The Overview feed: posts + reels, in grid order. (Defined before the

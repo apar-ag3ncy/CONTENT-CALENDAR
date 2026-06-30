@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { gsap, ScrollTrigger, prefersReducedMotion } from '../lib/motion'
 import {
   WEEKDAY_SHORT,
@@ -14,6 +14,66 @@ import { selectedDateFor } from './MonthIndex'
 import { isApiConfigured } from '../lib/api'
 import { useDialog } from '../hooks/useDialog'
 import { useTheme } from '../lib/theme'
+import { useAuth } from '../lib/auth'
+
+function UserMenu() {
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+  const [open, setOpen] = useState(false)
+  const initial = (user?.name || user?.email || 'A').trim().charAt(0).toUpperCase()
+  const label = user?.name || (user ? user.email.split('@')[0] : 'Apar Team')
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition hover:bg-gray-100 dark:hover:bg-white/10"
+      >
+        <span className="grid h-8 w-8 place-items-center rounded-full bg-brand-100 text-sm font-bold text-brand-700 dark:bg-brand-600/30 dark:text-brand-200">
+          {initial}
+        </span>
+        <span className="hidden max-w-[10rem] truncate text-sm font-semibold text-gray-700 dark:text-gray-200 sm:block">{label}</span>
+        <span className="hidden text-xs text-gray-400 sm:block" aria-hidden>▾</span>
+      </button>
+      {open ? (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />
+          <div role="menu" className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-gray-200 bg-white py-1.5 shadow-xl dark:border-white/10 dark:bg-night-850">
+            {user ? (
+              <div className="px-4 py-2">
+                <p className="truncate text-sm font-semibold text-gray-800 dark:text-parchment">{user.name || user.email}</p>
+                <p className="truncate text-xs text-gray-400 dark:text-parchment/50">{user.email}</p>
+                <span className="mt-1.5 inline-flex rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-700 dark:bg-white/10 dark:text-parchment/70">
+                  {user.role === 'admin' ? 'Admin' : 'Manager'}
+                </span>
+                <div className="mt-2 h-px bg-gray-100 dark:bg-white/10" />
+              </div>
+            ) : null}
+            <Link to="/settings#info" onClick={() => setOpen(false)} className="block px-4 py-2 text-sm text-gray-700 transition hover:bg-gray-50 dark:text-parchment/80 dark:hover:bg-white/5">
+              Settings
+            </Link>
+            {user ? (
+              <button
+                type="button"
+                onClick={() => {
+                  logout()
+                  setOpen(false)
+                  navigate('/login')
+                }}
+                className="block w-full px-4 py-2 text-left text-sm font-semibold text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
+              >
+                Log out
+              </button>
+            ) : null}
+          </div>
+        </>
+      ) : null}
+    </div>
+  )
+}
 
 function IconSun() {
   return (
@@ -467,16 +527,7 @@ function TopHeader({
             <IconBell />
             <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-brand-500 ring-2 ring-white dark:ring-night-950" />
           </button>
-          <Link
-            to="/settings#info"
-            className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition hover:bg-gray-100 dark:hover:bg-white/10"
-          >
-            <span className="grid h-8 w-8 place-items-center rounded-full bg-brand-100 text-sm font-bold text-brand-700 dark:bg-brand-600/30 dark:text-brand-200">
-              A
-            </span>
-            <span className="hidden text-sm font-semibold text-gray-700 dark:text-gray-200 sm:block">Apar Team</span>
-            <span className="hidden text-xs text-gray-400 sm:block" aria-hidden>▾</span>
-          </Link>
+          <UserMenu />
         </div>
       </div>
     </header>

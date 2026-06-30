@@ -8,6 +8,7 @@ import { useCategories } from '../hooks/useReferenceData'
 import { useTeamMembers } from '../hooks/useAdminData'
 import { useCreateItem, useUpdateItem } from '../hooks/useMutations'
 import { isApiConfigured } from '../lib/api'
+import { useAuth } from '../lib/auth'
 import { humanError } from '../lib/errors'
 import {
   WEEKDAY_LONG,
@@ -39,6 +40,7 @@ export default function ComposeView() {
   const d = parseISODate(dateISO)
   const dayOfWeek = WEEKDAY_LONG[weekdayMonFirst(d)]
   const backTo = `/month/${monthKey(d)}?d=${dateISO}`
+  const { canEdit } = useAuth()
 
   const dayItemsQ = useDayItems(dateISO)
   const categoriesQ = useCategories()
@@ -69,6 +71,25 @@ export default function ComposeView() {
         onError: (e) => setError(humanError(e)),
       })
     }
+  }
+
+  if (isApiConfigured && !canEdit) {
+    return (
+      <div className="compose-canvas relative overflow-hidden rounded-[2rem] px-4 py-12 text-center text-white sm:px-7">
+        <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-flame-200/90">No access</p>
+        <h1 className="mt-2 font-serif text-3xl font-bold text-cream">View-only</h1>
+        <p className="mx-auto mt-2 max-w-md text-sm text-white/70">
+          Managers can view the plan and update a post&rsquo;s status, but can&rsquo;t add or edit
+          content. Ask an admin if you need changes made.
+        </p>
+        <Link
+          to={backTo}
+          className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/15 backdrop-blur transition hover:bg-white/25"
+        >
+          ← Back to the day
+        </Link>
+      </div>
+    )
   }
 
   return (

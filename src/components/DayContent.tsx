@@ -24,7 +24,7 @@ import {
   useUpsertDayNote,
 } from '../hooks/useMutations'
 import { useNavigate } from 'react-router-dom'
-import { isApiConfigured } from '../lib/api'
+import { useAuth } from '../lib/auth'
 import { humanError } from '../lib/errors'
 import type {
   ContentItem,
@@ -51,6 +51,7 @@ function ItemCard({
   categoryName,
   assigneeName,
   canEdit,
+  canSetStatus,
   onEdit,
   onRemove,
   onStatusChange,
@@ -59,6 +60,7 @@ function ItemCard({
   categoryName: string | null
   assigneeName: string | null
   canEdit: boolean
+  canSetStatus: boolean
   onEdit: (item: ContentItem) => void
   onRemove: (item: ContentItem) => void
   onStatusChange: (item: ContentItem, status: ContentStatus) => void
@@ -175,7 +177,7 @@ function ItemCard({
           Status
           <select
             value={item.status}
-            disabled={!canEdit}
+            disabled={!canSetStatus}
             onChange={(e) =>
               onStatusChange(item, e.target.value as ContentStatus)
             }
@@ -340,7 +342,7 @@ export function DayContent({ dateISO }: { dateISO: string }) {
     setNoteDraft(dayNote?.note ?? '')
   }, [dayNote?.note, dateISO])
 
-  const canEdit = isApiConfigured
+  const { canEdit, canSetStatus } = useAuth()
   const noteDirty = noteDraft !== (dayNote?.note ?? '')
 
   // Add / edit now open the dedicated compose page instead of a popup.
@@ -541,6 +543,7 @@ export function DayContent({ dateISO }: { dateISO: string }) {
                       categoryName={categoryName(item.category_id)}
                       assigneeName={teamMemberName(item.assigned_to)}
                       canEdit={canEdit}
+                      canSetStatus={canSetStatus}
                       onEdit={openEdit}
                       onRemove={setConfirmItem}
                       onStatusChange={changeStatus}

@@ -13,6 +13,8 @@ import {
   useUpsertAppInfo,
 } from '../hooks/useAdminMutations'
 import { isApiConfigured } from '../lib/api'
+import { useAuth } from '../lib/auth'
+import { useUsers, useCreateUser, useUpdateUser, useDeleteUser } from '../hooks/useUsers'
 import { humanError } from '../lib/errors'
 import type { Category, TeamMember } from '../types/database'
 
@@ -124,8 +126,120 @@ function TeamMemberRow({
   )
 }
 
+const userInputCls =
+  'w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-white/10 dark:bg-white/5 dark:text-parchment dark:placeholder:text-parchment/40'
+
+/** Admin-only: list the team, create members, change roles, remove. */
+function UsersPanel() {
+  const { user: me } = useAuth()
+  const usersQ = useUsers(true)
+  const createUser = useCreateUser()
+  const updateUser = useUpdateUser()
+  const deleteUser = useDeleteUser()
+  const users = usersQ.data ?? []
+
+  const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
+  const [password, setPassword] = useState('')
+  const [role, setRole] = useState<'admin' | 'manager'>('manager')
+  const [err, setErr] = useState<string | null>(null)
+
+  function add() {
+    if (!email.trim() || !password) {
+      setErr('Email and a temporary password are required.')
+      return
+    }
+    setErr(null)
+    createUser.mutate(
+      { email: email.trim(), name: name.trim(), password, role },
+      {
+        onSuccess: () => {
+          setEmail('')
+          setName('')
+          setPassword('')
+          setRole('manager')
+        },
+        onError: (e) => setErr(humanError(e)),
+      },
+    )
+  }
+
+  return (
+    <section id="users" className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-night-850">
+      <div className="flex items-center gap-2">
+        <h2 className="text-lg font-bold text-slate-900 dark:text-parchment">Users &amp; access</h2>
+        <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-700 dark:bg-white/10 dark:text-parchment/70">Admin</span>
+      </div>
+      <p className="mt-0.5 text-sm text-slate-500 dark:text-parchment/55">
+        Add the team. <strong>Admins</strong> edit everything; <strong>managers</strong> view the plan and change a post&rsquo;s status only.
+      </p>
+
+      <div className="mt-4 space-y-2">
+        {usersQ.isLoading ? (
+          <p className="text-sm text-slate-400 dark:text-parchment/45">Loading…</p>
+        ) : (
+          users.map((u) => (
+            <div key={u.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-gray-100 p-2.5 dark:border-white/10">
+              <span className="grid h-9 w-9 flex-none place-items-center rounded-full bg-brand-100 text-sm font-bold text-brand-700 dark:bg-brand-600/30 dark:text-brand-200">
+                {(u.name || u.email).charAt(0).toUpperCase()}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-slate-800 dark:text-parchment">
+                  {u.name || u.email}
+                  {u.id === me?.id ? ' (you)' : ''}
+                </p>
+                <p className="truncate text-xs text-slate-400 dark:text-parchment/50">{u.email}</p>
+              </div>
+              <select
+                value={u.role}
+                onChange={(e) => updateUser.mutate({ id: u.id, patch: { role: e.target.value as 'admin' | 'manager' } }, { onError: (er) => setErr(humanError(er)) })}
+                className="rounded-lg border border-slate-200 px-2 py-1 text-sm font-semibold text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-parchment"
+              >
+                <option value="admin">Admin</option>
+                <option value="manager">Manager</option>
+              </select>
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm(`Remove ${u.email}?`)) deleteUser.mutate(u.id, { onError: (er) => setErr(humanError(er)) })
+                }}
+                disabled={u.id === me?.id}
+                className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-40 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10"
+              >
+                Remove
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="mt-4 rounded-xl border border-dashed border-gray-200 p-3 dark:border-white/10">
+        <p className="mb-2 text-[13px] font-semibold text-slate-700 dark:text-parchment/80">Add a team member</p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <input className={userInputCls} placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input className={userInputCls} placeholder="Name (optional)" value={name} onChange={(e) => setName(e.target.value)} />
+          <input className={userInputCls} placeholder="Temporary password" type="text" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <select className={userInputCls} value={role} onChange={(e) => setRole(e.target.value as 'admin' | 'manager')}>
+            <option value="manager">Manager — view + status</option>
+            <option value="admin">Admin — full access</option>
+          </select>
+        </div>
+        <button
+          type="button"
+          onClick={add}
+          disabled={createUser.isPending}
+          className="mt-2 rounded-xl bg-gradient-to-br from-flame-500 to-brand-600 px-4 py-2 text-sm font-bold text-white transition hover:brightness-110 disabled:opacity-60"
+        >
+          {createUser.isPending ? 'Adding…' : 'Add member'}
+        </button>
+        {err ? <p className="mt-2 text-sm text-red-600 dark:text-red-400">{err}</p> : null}
+      </div>
+    </section>
+  )
+}
+
 export default function SettingsView() {
-  const canEdit = isApiConfigured
+  const { canEdit, isAdmin } = useAuth()
   const { hash } = useLocation()
 
   // Scroll to a section when linked via /settings#info etc.
@@ -225,12 +339,18 @@ export default function SettingsView() {
         <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Categories &amp; info</h1>
       </div>
 
-      {!canEdit ? (
+      {!isApiConfigured ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
           Showing sample data — connect the backend (set <code>VITE_API_URL</code>)
           to manage categories, team members, and notes.
         </div>
+      ) : !canEdit ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-200">
+          You have view-only access. An admin manages categories, team and users.
+        </div>
       ) : null}
+
+      {isAdmin ? <UsersPanel /> : null}
       {pageError ? (
         <p className="rounded-xl bg-red-50 px-4 py-2 text-sm text-red-700">
           {pageError}

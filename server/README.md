@@ -76,6 +76,32 @@ Set `VITE_API_URL=http://localhost:4000` and run the front-end. Everything works
 (data + photo upload), but the data resets when you stop the server. Use a real
 Atlas URI (`npm start`) for persistent, shared data.
 
+## Logins & roles
+
+The API requires a login (JWT). Set these in `server/.env`:
+
+```
+JWT_SECRET=<a long random string>
+ADMIN_EMAIL=admin@apar.agency
+ADMIN_PASSWORD=<your password>
+```
+
+On first run (empty `users` collection) a single **admin** is created from those
+values — sign in with them, then add the rest of the team in the app under
+**Settings → Users**.
+
+- **Admin** — full access: add/edit/remove content, upload media, lock periods,
+  manage categories/team/users.
+- **Manager** — read-only **except** they can change a post's **status** (e.g.
+  Idea → Ready → Posted). The IG team uses this to mark what they've posted.
+
+Public (no login): `GET /api/health`, `POST /api/auth/login`, and
+`GET /api/media/:id` (so `<img>` tags load). Everything else needs a token; the
+front-end sends it automatically and bounces to `/login` on 401.
+
+> The in-memory dev server (`npm run dev:memory`) seeds a default admin and
+> prints its credentials: **admin@apar.agency / admin1234**.
+
 ## Verify the API
 
 ```bash

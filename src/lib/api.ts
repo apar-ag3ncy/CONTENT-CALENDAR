@@ -13,6 +13,16 @@ import type {
   SpecialDay,
   TeamMember,
 } from '../types/database'
+import { getToken, setToken } from './authStore'
+
+export type Role = 'admin' | 'manager'
+export interface AuthUser {
+  id: string
+  email: string
+  name: string
+  role: Role
+  created_at: string | null
+}
 
 const RAW = import.meta.env.VITE_API_URL as string | undefined
 /** Base URL with any trailing slash removed (''  when not configured). */
@@ -22,13 +32,17 @@ export const isApiConfigured = API_BASE.length > 0
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const isForm = init?.body instanceof FormData
+  const token = getToken()
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
       ...(init?.body && !isForm ? { 'content-type': 'application/json' } : {}),
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
       ...(init?.headers ?? {}),
     },
   })
+  // An invalid/expired token: drop it so route guards send the user to /login.
+  if (res.status === 401) setToken(null)
   if (!res.ok) {
     let msg = `Request failed (${res.status})`
     try {
@@ -109,4 +123,20 @@ export const api = {
     return req<MediaItem>(`/api/media`, { method: 'POST', body: fd })
   },
   deleteMedia: (path: string) => req<void>(`/api/media/${path}`, { method: 'DELETE' }),
+
+  // ── Auth ──
+  login: (email: string, password: string) =>
+    req<{ token: string; user: AuthUser }>(`/api/auth/login`, {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    }),
+  me: () => req<AuthUser>(`/api/auth/me`),
+
+  // ── Users (admin) ──
+  users: () => req<AuthUser[]>(`/api/users`),
+  createUser: (u: { email: string; name: string; password: string; role: Role }) =>
+    req<AuthUser>(`/api/users`, { method: 'POST', body: JSON.stringify(u) }),
+  updateUser: (id: string, patch: { name?: string; role?: Role; password?: string }) =>
+    req<AuthUser>(`/api/users/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  deleteUser: (id: string) => req<void>(`/api/users/${id}`, { method: 'DELETE' }),
 }
