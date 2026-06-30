@@ -22,6 +22,24 @@ body {
   background-attachment: fixed;
 }
 
+/* ── Dark theme (class strategy, default) — warm near-black like the deployed app ── */
+html.dark body {
+  color: #d8cfc5;
+  background-color: #0f0b08;
+  background-image:
+    radial-gradient(60rem 60rem at 112% -12%, rgba(232, 80, 2, 0.16), transparent 58%),
+    radial-gradient(64rem 48rem at 50% 130%, rgba(214, 46, 20, 0.13), transparent 60%),
+    linear-gradient(180deg, #100b08 0%, #0c0806 100%);
+}
+/* Cards/forms flip to warm-dark surfaces; light text stays readable via dark: in markup. */
+.dark .card {
+  background-color: #171210;
+  border-color: rgba(255, 255, 255, 0.07);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.5),
+    0 18px 38px -24px rgba(0, 0, 0, 0.75);
+}
+
 /* Consistent, theme-matched keyboard focus ring on every interactive control. */
 @layer base {
   a:focus-visible,

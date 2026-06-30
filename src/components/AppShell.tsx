@@ -13,6 +13,39 @@ import {
 import { selectedDateFor } from './MonthIndex'
 import { isApiConfigured } from '../lib/api'
 import { useDialog } from '../hooks/useDialog'
+import { useTheme } from '../lib/theme'
+
+function IconSun() {
+  return (
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+    </svg>
+  )
+}
+function IconMoon() {
+  return (
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+    </svg>
+  )
+}
+
+function ThemeToggle() {
+  const { theme, toggle } = useTheme()
+  const dark = theme === 'dark'
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}
+      title={dark ? 'Light mode' : 'Dark mode'}
+      className="grid h-10 w-10 place-items-center rounded-full text-gray-500 transition hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/10"
+    >
+      {dark ? <IconSun /> : <IconMoon />}
+    </button>
+  )
+}
 
 // ---- header icons ----------------------------------------------------------
 function IconMenu() {
@@ -369,14 +402,14 @@ function Brand({ collapsed = false }: { collapsed?: boolean }) {
       to="/"
       className={`flex items-center ${collapsed ? 'justify-center' : 'gap-2.5'}`}
     >
-      <span className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-flame-500 text-lg font-bold text-white shadow-sm">
-        C
-      </span>
+      <img src="/apar-logo.svg" alt="Apar" className="h-7 w-auto flex-none dark:hidden" />
+      <img src="/apar-logo-white.svg" alt="Apar" className="hidden h-7 w-auto flex-none dark:block" />
       {!collapsed ? (
-        <div className="leading-tight">
-          <div className="text-sm font-bold text-gray-900">Chheda&rsquo;s × Apar</div>
-          <div className="text-[11px] text-gray-400">Content Calendar</div>
-        </div>
+        <span className="text-[10px] font-bold uppercase leading-tight tracking-[0.18em] text-gray-400 dark:text-gray-500">
+          Content
+          <br />
+          Calendar
+        </span>
       ) : null}
     </Link>
   )
@@ -390,13 +423,13 @@ function TopHeader({
   onDesktopToggle: () => void
 }) {
   return (
-    <header className="sticky top-0 z-20 border-b border-gray-200 bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-20 border-b border-gray-200 bg-white/90 backdrop-blur dark:border-white/10 dark:bg-night-950/80">
       <div className="flex h-16 items-center gap-3 px-4 lg:px-6">
         <button
           type="button"
           onClick={onMobileMenu}
           aria-label="Open menu"
-          className="grid h-10 w-10 place-items-center rounded-lg border border-gray-200 text-gray-600 transition hover:bg-gray-100 lg:hidden"
+          className="grid h-10 w-10 place-items-center rounded-lg border border-gray-200 text-gray-600 transition hover:bg-gray-100 dark:border-white/10 dark:text-gray-300 dark:hover:bg-white/10 lg:hidden"
         >
           <IconMenu />
         </button>
@@ -404,43 +437,44 @@ function TopHeader({
           type="button"
           onClick={onDesktopToggle}
           aria-label="Toggle sidebar"
-          className="hidden h-10 w-10 place-items-center rounded-lg border border-gray-200 text-gray-600 transition hover:bg-gray-100 lg:grid"
+          className="hidden h-10 w-10 place-items-center rounded-lg border border-gray-200 text-gray-600 transition hover:bg-gray-100 dark:border-white/10 dark:text-gray-300 dark:hover:bg-white/10 lg:grid"
         >
           <IconMenu />
         </button>
 
         <div className="relative hidden max-w-md flex-1 sm:block">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500">
             <IconSearch />
           </span>
           <input
             type="search"
             aria-label="Search"
             placeholder="Search or type command…"
-            className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-16 text-sm text-gray-700 placeholder:text-gray-400 focus:border-brand-300 focus:bg-white"
+            className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-16 text-sm text-gray-700 placeholder:text-gray-400 focus:border-brand-300 focus:bg-white dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:placeholder:text-gray-500 dark:focus:border-brand-400 dark:focus:bg-white/10"
           />
-          <kbd className="absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[11px] font-semibold text-gray-400 md:block">
+          <kbd className="absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[11px] font-semibold text-gray-400 dark:border-white/10 dark:bg-white/5 md:block">
             ⌘K
           </kbd>
         </div>
 
         <div className="ml-auto flex items-center gap-2">
+          <ThemeToggle />
           <button
             type="button"
             aria-label="Notifications"
-            className="relative grid h-10 w-10 place-items-center rounded-full text-gray-500 transition hover:bg-gray-100"
+            className="relative grid h-10 w-10 place-items-center rounded-full text-gray-500 transition hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/10"
           >
             <IconBell />
-            <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-brand-500 ring-2 ring-white" />
+            <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-brand-500 ring-2 ring-white dark:ring-night-950" />
           </button>
           <Link
             to="/settings#info"
-            className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition hover:bg-gray-100"
+            className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition hover:bg-gray-100 dark:hover:bg-white/10"
           >
-            <span className="grid h-8 w-8 place-items-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">
+            <span className="grid h-8 w-8 place-items-center rounded-full bg-brand-100 text-sm font-bold text-brand-700 dark:bg-brand-600/30 dark:text-brand-200">
               A
             </span>
-            <span className="hidden text-sm font-semibold text-gray-700 sm:block">Apar Team</span>
+            <span className="hidden text-sm font-semibold text-gray-700 dark:text-gray-200 sm:block">Apar Team</span>
             <span className="hidden text-xs text-gray-400 sm:block" aria-hidden>▾</span>
           </Link>
         </div>
@@ -471,11 +505,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen">
       {/* Desktop sidebar — collapses to an icon rail */}
       <aside
-        className={`fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-gray-200/80 bg-white/85 backdrop-blur-xl transition-[width] duration-200 lg:flex ${
+        className={`fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-gray-200/80 bg-white/85 backdrop-blur-xl transition-[width] duration-200 dark:border-white/10 dark:bg-night-850/85 lg:flex ${
           collapsed ? 'w-20' : 'w-72'
         }`}
       >
-        <div className={`flex h-16 flex-none items-center border-b border-gray-200 ${collapsed ? 'justify-center px-0' : 'px-6'}`}>
+        <div className={`flex h-16 flex-none items-center border-b border-gray-200 dark:border-white/10 ${collapsed ? 'justify-center px-0' : 'px-6'}`}>
           <Brand collapsed={collapsed} />
         </div>
         <div className={`flex-1 overflow-y-auto py-5 ${collapsed ? 'px-2' : 'px-4'}`}>
@@ -496,9 +530,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             aria-modal="true"
             aria-label="Menu"
             tabIndex={-1}
-            className="absolute inset-y-0 left-0 flex w-72 max-w-[82%] flex-col bg-white shadow-xl outline-none"
+            className="absolute inset-y-0 left-0 flex w-72 max-w-[82%] flex-col bg-white shadow-xl outline-none dark:bg-night-850"
           >
-            <div className="flex h-16 flex-none items-center justify-between border-b border-gray-200 px-6">
+            <div className="flex h-16 flex-none items-center justify-between border-b border-gray-200 px-6 dark:border-white/10">
               <Brand />
               <button
                 type="button"

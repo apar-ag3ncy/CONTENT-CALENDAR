@@ -1,9 +1,21 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
+        // Warm near-black "night" palette for the dark theme (matches the
+        // deployed calendar.apar.agency).
+        night: {
+          950: '#0f0b08', // page background
+          900: '#150f0c',
+          850: '#171210', // sidebar / cards
+          800: '#1d1612', // raised cards
+          700: '#241b16',
+          600: '#2c211b', // borders / hover
+        },
+        parchment: '#d8cfc5', // warm cream body text on dark
         // APAR red — primary accent used across buttons, headers, highlights.
         brand: {
           DEFAULT: '#D62E14',
