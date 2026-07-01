@@ -12,7 +12,7 @@ import {
   useDeleteTeamMember,
   useUpsertAppInfo,
 } from '../hooks/useAdminMutations'
-import { isApiConfigured } from '../lib/api'
+import { useCanEdit } from '../lib/auth'
 import { humanError } from '../lib/errors'
 import type { Category, TeamMember } from '../types/database'
 
@@ -125,7 +125,7 @@ function TeamMemberRow({
 }
 
 export default function SettingsView() {
-  const canEdit = isApiConfigured
+  const canEdit = useCanEdit()
   const { hash } = useLocation()
 
   // Scroll to a section when linked via /settings#info etc.

@@ -66,6 +66,9 @@ function mk(p: {
     assigned_to: null,
     notes: null,
     grid_position: p.grid ?? null,
+    approval_state: 'pending',
+    approval_updated_at: null,
+    approval_updated_by: null,
     created_at: STAMP,
     updated_at: STAMP,
   }

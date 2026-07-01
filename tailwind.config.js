@@ -5,19 +5,22 @@ export default {
   theme: {
     extend: {
       colors: {
-        // APAR orange-red (#EE3A24) — primary brand accent across the app.
+        // Brand accent ramp — driven by CSS variables so each client workspace can
+        // re-skin the whole app to its own colour (defaults to APAR orange-red,
+        // set in index.css :root). Uses the rgb(var / <alpha>) form so opacity
+        // utilities (bg-brand-500/20 etc.) keep working.
         brand: {
-          DEFAULT: '#EE3A24',
-          50: '#FEF2EF',
-          100: '#FBDCD5', // light tint — special days
-          200: '#F8BAA9',
-          300: '#F38C73',
-          400: '#F15C40',
-          500: '#EE3A24', // APAR orange-red
-          600: '#DC2E18', // main accent (buttons)
-          700: '#B82513',
-          800: '#931E12',
-          900: '#791C13',
+          DEFAULT: 'rgb(var(--brand-500) / <alpha-value>)',
+          50: 'rgb(var(--brand-50) / <alpha-value>)',
+          100: 'rgb(var(--brand-100) / <alpha-value>)',
+          200: 'rgb(var(--brand-200) / <alpha-value>)',
+          300: 'rgb(var(--brand-300) / <alpha-value>)',
+          400: 'rgb(var(--brand-400) / <alpha-value>)',
+          500: 'rgb(var(--brand-500) / <alpha-value>)',
+          600: 'rgb(var(--brand-600) / <alpha-value>)',
+          700: 'rgb(var(--brand-700) / <alpha-value>)',
+          800: 'rgb(var(--brand-800) / <alpha-value>)',
+          900: 'rgb(var(--brand-900) / <alpha-value>)',
         },
         // Warm orange — pairs with brand red for the red→orange "grainient" look.
         flame: {
@@ -57,18 +60,34 @@ export default {
         champagne: '#C9B68C',
       },
       fontFamily: {
+        // San Francisco everywhere — Apple's system font (no web download).
+        // `-apple-system`/`BlinkMacSystemFont` resolve to SF on macOS & iOS;
+        // other platforms fall back to their native UI font.
         sans: [
-          'Outfit',
-          'ui-sans-serif',
-          'system-ui',
           '-apple-system',
-          'Segoe UI',
+          'BlinkMacSystemFont',
+          '"SF Pro Text"',
+          'system-ui',
+          '"Segoe UI"',
+          'Roboto',
+          'Helvetica',
+          'Arial',
+          'sans-serif',
+          '"Apple Color Emoji"',
+          '"Segoe UI Emoji"',
+        ],
+        // Headings use the display optical size of San Francisco.
+        serif: [
+          '-apple-system',
+          'BlinkMacSystemFont',
+          '"SF Pro Display"',
+          'system-ui',
+          '"Segoe UI"',
           'Roboto',
           'Helvetica',
           'Arial',
           'sans-serif',
         ],
-        serif: ['"Playfair Display"', 'Georgia', 'Cambria', 'serif'],
       },
     },
   },

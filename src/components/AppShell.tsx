@@ -1,10 +1,11 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import { Link, useLocation } from 'react-router-dom'
-import { gsap, ScrollTrigger, prefersReducedMotion } from '../lib/motion'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { ScrollTrigger } from '../lib/motion'
 import {
   WEEKDAY_SHORT,
   daysInMonth,
   isToday,
+  isValidISODate,
   monthKey,
   parseISODate,
   toISODate,
@@ -14,6 +15,8 @@ import { selectedDateFor } from './MonthIndex'
 import { isApiConfigured } from '../lib/api'
 import { toggleTheme, isDark } from '../lib/theme'
 import { useDialog } from '../hooks/useDialog'
+import { logout, refreshClients, setActiveClient, useAuth, useIsTeam } from '../lib/auth'
+import { applyBrandTheme } from '../lib/brandTheme'
 
 /** Light/dark switch for the navbar. */
 function ThemeToggle() {
@@ -375,11 +378,20 @@ function CalendarNav({
   )
 }
 
-/** APAR-orange ramp for the stacked day pills: vivid brand orange at the top,
- *  fading to a light warm-peach tint at the bottom. */
+/** Stacked day-pill ramp: the workspace's brand colour at the top fading to a
+ *  light tint at the bottom. Reads the live brand CSS variables so it re-skins
+ *  with the active client's theme (defaults to the Apar orange ramp). */
+function brandRgb(name: string, fallback: [number, number, number]): [number, number, number] {
+  if (typeof document === 'undefined') return fallback
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  const parts = v.split(/\s+/).map(Number)
+  return parts.length === 3 && parts.every((n) => !Number.isNaN(n))
+    ? (parts as [number, number, number])
+    : fallback
+}
 function dayPillStyle(t: number): { backgroundColor: string; color: string } {
-  const top = [0xee, 0x3a, 0x24] // brand-500 — the Apar orange
-  const bot = [0xfd, 0xe3, 0xd6] // light warm-peach tint
+  const top = brandRgb('--brand-500', [0xee, 0x3a, 0x24]) // brand accent at the top
+  const bot = brandRgb('--brand-100', [0xfd, 0xe3, 0xd6]) // light brand tint at the bottom
   const r = Math.round(top[0] + (bot[0] - top[0]) * t)
   const g = Math.round(top[1] + (bot[1] - top[1]) * t)
   const b = Math.round(top[2] + (bot[2] - top[2]) * t)
@@ -406,6 +418,232 @@ function Brand({ collapsed = false }: { collapsed?: boolean }) {
         </span>
       ) : null}
     </Link>
+  )
+}
+
+function IconChevron({ open }: { open: boolean }) {
+  return (
+    <svg className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  )
+}
+
+/** Team-only dropdown to switch which client workspace is being viewed. */
+function WorkspaceSwitcher() {
+  const session = useAuth()
+  const isTeam = useIsTeam()
+  const [open, setOpen] = useState(false)
+  if (!isTeam || !session) return null
+  const active = session.clients.find((c) => c.id === session.activeClientId)
+
+  return (
+    <div className="relative hidden sm:block">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 dark:border-white/10 dark:bg-white/5 dark:text-gray-200"
+      >
+        <span className="h-2 w-2 rounded-full bg-brand-500" aria-hidden />
+        <span className="max-w-[10rem] truncate">{active?.name ?? 'Choose workspace'}</span>
+        <IconChevron open={open} />
+      </button>
+      {open ? (
+        <>
+          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} aria-hidden />
+          <div className="absolute left-0 z-40 mt-2 w-64 overflow-hidden rounded-xl border border-gray-200 bg-white p-1.5 shadow-xl dark:border-white/10 dark:bg-[#1f1916]">
+            <p className="px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wide text-gray-400">
+              Switch workspace
+            </p>
+            <div className="max-h-72 overflow-y-auto">
+              {session.clients.map((c) => {
+                const isActive = c.id === session.activeClientId
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveClient(c.id)
+                      setOpen(false)
+                    }}
+                    className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition ${
+                      isActive
+                        ? 'bg-brand-50 font-semibold text-brand-700 dark:bg-brand-500/15 dark:text-brand-300'
+                        : 'text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-white/5'
+                    }`}
+                  >
+                    <span className="min-w-0 flex-1 truncate">{c.name}</span>
+                    {c.status === 'disabled' ? (
+                      <span className="text-[10px] font-bold uppercase text-gray-400">off</span>
+                    ) : null}
+                    {isActive ? <span className="text-brand-600">✓</span> : null}
+                  </button>
+                )
+              })}
+            </div>
+            <Link
+              to="/clients"
+              onClick={() => setOpen(false)}
+              className="mt-1 block rounded-lg px-2.5 py-2 text-sm font-semibold text-brand-700 transition hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-white/5"
+            >
+              + Manage clients
+            </Link>
+          </div>
+        </>
+      ) : null}
+    </div>
+  )
+}
+
+/** Account dropdown: who you are, admin links (team), and sign out. */
+function UserMenu() {
+  const session = useAuth()
+  const isTeam = useIsTeam()
+  const [open, setOpen] = useState(false)
+  const navigate = useNavigate()
+
+  if (!session) {
+    // Backend-less demo mode — no real account.
+    return (
+      <span className="hidden items-center gap-2 rounded-full py-1 pl-1 pr-3 text-sm font-semibold text-gray-500 sm:flex">
+        <span className="grid h-8 w-8 place-items-center rounded-full bg-gray-200 text-sm font-bold text-gray-600">
+          D
+        </span>
+        Demo
+      </span>
+    )
+  }
+
+  const onLogout = async () => {
+    const backTo = session.kind === 'team' ? '/admin' : '/'
+    setOpen(false)
+    await logout()
+    navigate(backTo, { replace: true })
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition hover:bg-gray-100 dark:hover:bg-white/10"
+      >
+        <span className="grid h-8 w-8 place-items-center rounded-full bg-brand-100 text-sm font-bold text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">
+          {session.name.charAt(0).toUpperCase()}
+        </span>
+        <span className="hidden max-w-[9rem] truncate text-sm font-semibold text-gray-700 dark:text-gray-200 sm:block">
+          {session.name}
+        </span>
+        <span className="hidden text-gray-400 sm:block" aria-hidden>
+          <IconChevron open={open} />
+        </span>
+      </button>
+      {open ? (
+        <>
+          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} aria-hidden />
+          <div className="absolute right-0 z-40 mt-2 w-60 overflow-hidden rounded-xl border border-gray-200 bg-white p-1.5 shadow-xl dark:border-white/10 dark:bg-[#1f1916]">
+            <div className="px-2.5 py-2">
+              <p className="truncate text-sm font-bold text-gray-900 dark:text-gray-100">{session.name}</p>
+              <span
+                className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                  isTeam ? 'bg-brand-100 text-brand-700' : 'bg-emerald-100 text-emerald-700'
+                }`}
+              >
+                {isTeam ? 'Apar Team' : 'Client'}
+              </span>
+            </div>
+            <div className="my-1 h-px bg-gray-100 dark:bg-white/10" />
+            {isTeam ? (
+              <>
+                <MenuLink to="/clients" label="Clients" onClick={() => setOpen(false)} />
+                <MenuLink to="/team" label="Team accounts" onClick={() => setOpen(false)} />
+                <div className="my-1 h-px bg-gray-100 dark:bg-white/10" />
+              </>
+            ) : null}
+            <button
+              type="button"
+              onClick={onLogout}
+              className="block w-full rounded-lg px-2.5 py-2 text-left text-sm font-semibold text-red-600 transition hover:bg-red-50 dark:hover:bg-red-500/10"
+            >
+              Sign out
+            </button>
+          </div>
+        </>
+      ) : null}
+    </div>
+  )
+}
+
+function MenuLink({ to, label, onClick }: { to: string; label: string; onClick: () => void }) {
+  return (
+    <Link
+      to={to}
+      onClick={onClick}
+      className="block rounded-lg px-2.5 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-white/5"
+    >
+      {label}
+    </Link>
+  )
+}
+
+/** Parse a typed search term into a YYYY-MM-DD date, or null. Accepts ISO
+ *  (2026-07-02), natural dates (Jul 2, July 2 2026, 7/2/2026); a missing year
+ *  defaults to the current year. */
+function parseSearchToISO(raw: string): string | null {
+  const s = raw.trim()
+  if (!s) return null
+  if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(s)) {
+    const [y, m, d] = s.split('-').map(Number)
+    const iso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    return isValidISODate(iso) ? iso : null
+  }
+  const withYear = /\b\d{4}\b/.test(s) ? s : `${s} ${new Date().getFullYear()}`
+  const dt = new Date(withYear)
+  return Number.isNaN(dt.getTime()) ? null : toISODate(dt)
+}
+
+/** Header search that jumps straight to a day page when you enter a date. */
+function SearchBox() {
+  const navigate = useNavigate()
+  const [q, setQ] = useState('')
+  const [bad, setBad] = useState(false)
+
+  function submit(e: FormEvent) {
+    e.preventDefault()
+    const iso = parseSearchToISO(q)
+    if (iso) {
+      setBad(false)
+      setQ('')
+      navigate(`/day/${iso}`)
+    } else {
+      setBad(true)
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="relative hidden max-w-md flex-1 sm:block">
+      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+        <IconSearch />
+      </span>
+      <input
+        type="text"
+        value={q}
+        onChange={(e) => {
+          setQ(e.target.value)
+          if (bad) setBad(false)
+        }}
+        aria-label="Jump to a date"
+        placeholder="Jump to a date…  e.g. 2026-07-02 or Jul 2"
+        className={`w-full rounded-xl border bg-gray-50 py-2.5 pl-10 pr-16 text-sm text-gray-700 placeholder:text-gray-400 focus:bg-white ${
+          bad ? 'border-red-300 focus:border-red-400' : 'border-gray-200 focus:border-brand-300'
+        }`}
+      />
+      <kbd className="absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded-md border border-gray-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-gray-400 md:block">
+        ↵
+      </kbd>
+    </form>
   )
 }
 
@@ -436,41 +674,12 @@ function TopHeader({
           <IconMenu />
         </button>
 
-        <div className="relative hidden max-w-md flex-1 sm:block">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-            <IconSearch />
-          </span>
-          <input
-            type="search"
-            aria-label="Search"
-            placeholder="Search or type command…"
-            className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-16 text-sm text-gray-700 placeholder:text-gray-400 focus:border-brand-300 focus:bg-white"
-          />
-          <kbd className="absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[11px] font-semibold text-gray-400 md:block">
-            ⌘K
-          </kbd>
-        </div>
+        <SearchBox />
 
         <div className="ml-auto flex items-center gap-2">
+          <WorkspaceSwitcher />
           <ThemeToggle />
-          <button
-            type="button"
-            aria-label="Notifications"
-            className="relative grid h-10 w-10 place-items-center rounded-full text-gray-500 transition hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/10"
-          >
-            <IconBell />
-            <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-brand-500 ring-2 ring-white dark:ring-[#171210]" />
-          </button>
-          <Link
-            to="/settings#info"
-            className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition hover:bg-gray-100 dark:hover:bg-white/10"
-          >
-            <span className="grid h-8 w-8 place-items-center rounded-full bg-brand-100 text-sm font-bold text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">
-              A
-            </span>
-            <span className="hidden text-sm font-semibold text-gray-700 sm:block">Apar Team</span>
-            <span className="hidden text-xs text-gray-400 sm:block" aria-hidden>▾</span>
-          </Link>
+          <UserMenu />
         </div>
       </div>
     </header>
@@ -481,18 +690,66 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
   const drawerRef = useDialog(drawerOpen, () => setDrawerOpen(false))
+  const session = useAuth()
+
+  // On load, re-fetch /me so the workspace list stays fresh and a stale token is
+  // caught early (a 401 here clears the session and bounces to login).
+  useEffect(() => {
+    if (session) void refreshClients().catch(() => {})
+    // Only on mount / when a session first appears.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.token])
+
+  // Re-skin the whole app with the active client's brand colours (reset on exit).
+  const activeClient = session?.clients.find((c) => c.id === session.activeClientId) ?? null
+  const themeKey = activeClient
+    ? `${activeClient.brand_color}|${activeClient.text_color}|${activeClient.bg_color}`
+    : ''
+  const [, bumpTheme] = useState(0)
+  useEffect(() => {
+    applyBrandTheme(activeClient)
+    // Re-render once so JS-computed colours (the day pills) re-read the new vars.
+    bumpTheme((n) => n + 1)
+    return () => applyBrandTheme(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [themeKey])
 
   const { pathname } = useLocation()
   useEffect(() => {
-    // New page: scroll to top (smooth unless reduced-motion), then re-measure triggers.
-    if (prefersReducedMotion()) {
+    // New page → land at the top so its content is in view. We INSTANTLY reset
+    // (briefly disabling the global `scroll-behavior: smooth` from index.css; an
+    // animated scroll-to-top fights that CSS smooth-scroll).
+    //
+    // The catch: GSAP ScrollTrigger RESTORES its cached scroll position on every
+    // refresh — and each <Reveal> fires a refresh as it mounts. From a scrolled
+    // Grid, that storm of refreshes re-parks a short page (e.g. a Day) at the old
+    // offset, so it looks blank/"unloaded" until a manual refresh. So we pin to
+    // the top across the first several frames (beating the reveal refreshes) plus
+    // one safety reset after async content (the day's feed/thread) arrives.
+    const html = document.documentElement
+    const toTop = () => {
+      const prevBehavior = html.style.scrollBehavior
+      html.style.scrollBehavior = 'auto'
       window.scrollTo(0, 0)
-    } else {
-      gsap.to(window, { duration: 0.5, scrollTo: { y: 0 }, ease: 'power2.out' })
+      html.style.scrollBehavior = prevBehavior
     }
-    // Defer refresh until after the new route paints so start/end positions are correct.
-    const id = requestAnimationFrame(() => ScrollTrigger.refresh())
-    return () => cancelAnimationFrame(id)
+    let raf = 0
+    let frames = 0
+    let refreshed = false
+    const pin = () => {
+      toTop()
+      if (!refreshed) {
+        ScrollTrigger.refresh() // re-measure triggers so reveals fire correctly
+        refreshed = true
+      }
+      if (++frames < 6) raf = requestAnimationFrame(pin)
+    }
+    pin()
+    const safety = window.setTimeout(toTop, 300)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.clearTimeout(safety)
+    }
   }, [pathname])
 
   return (

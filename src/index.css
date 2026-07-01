@@ -2,6 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Brand accent ramp (default = APAR orange-red). A client workspace overrides
+   these per-render to re-skin the whole app to its own colour. */
+:root {
+  --brand-50: 254 242 239;
+  --brand-100: 251 220 213;
+  --brand-200: 248 186 169;
+  --brand-300: 243 140 115;
+  --brand-400: 241 92 64;
+  --brand-500: 238 58 36;
+  --brand-600: 220 46 24;
+  --brand-700: 184 37 19;
+  --brand-800: 147 30 18;
+  --brand-900: 121 28 19;
+  --app-bg: #fbf2ea; /* warm cream page base */
+  --app-heading: #0f172a; /* slate-900 heading colour */
+}
+
 html,
 body,
 #root {
@@ -10,16 +27,31 @@ body,
 
 body {
   @apply text-slate-700 antialiased;
-  background-color: #fbf2ea;
-  /* Warm dark-orange ambient gradient — deep orange glow top-right + bottom,
-     red mid-left. Kept light enough that white cards stay crisp; fixed so it
-     doesn't scroll. */
+  background-color: var(--app-bg);
+  /* Warm ambient gradient — driven by the brand ramp so it tints with the
+     active workspace's colour. Kept light so white cards stay crisp. */
   background-image:
-    radial-gradient(58rem 58rem at 110% -12%, rgba(232, 80, 2, 0.2), transparent 60%),
-    radial-gradient(50rem 50rem at -12% 4%, rgba(214, 46, 20, 0.1), transparent 55%),
-    radial-gradient(72rem 52rem at 50% 126%, rgba(225, 56, 12, 0.16), transparent 62%),
-    linear-gradient(180deg, rgba(248, 127, 35, 0.05) 0%, transparent 30%);
+    radial-gradient(58rem 58rem at 110% -12%, rgb(var(--brand-500) / 0.18), transparent 60%),
+    radial-gradient(50rem 50rem at -12% 4%, rgb(var(--brand-600) / 0.1), transparent 55%),
+    radial-gradient(72rem 52rem at 50% 126%, rgb(var(--brand-500) / 0.14), transparent 62%),
+    linear-gradient(180deg, rgb(var(--brand-400) / 0.05) 0%, transparent 30%);
   background-attachment: fixed;
+}
+
+/* When a client brand theme is active, recolour the major headings to the
+   client's chosen font colour (full-theme mode). */
+html[data-themed] .text-slate-900,
+html[data-themed] .text-gray-900,
+html[data-themed] .text-forest-800,
+html[data-themed] h1,
+html[data-themed] h2 {
+  color: var(--app-heading);
+}
+
+/* The Grid Review hero sits on a brand-gradient wash and keeps a white title —
+   so it opts out of the client-heading recolour above (higher specificity). */
+html[data-themed] .editorial-hero h1 {
+  color: #fff;
 }
 
 /* Consistent, theme-matched keyboard focus ring on every interactive control. */
@@ -41,11 +73,12 @@ body {
   }
   .btn-primary {
     @apply btn text-white;
-    background-image: linear-gradient(135deg, #e33a1e 0%, #e85002 55%, #f16001 100%);
-    box-shadow: 0 10px 22px -10px rgba(225, 58, 30, 0.6);
+    /* Brand-variable driven so it recolours with the active workspace's theme. */
+    background-image: linear-gradient(135deg, rgb(var(--brand-500)) 0%, rgb(var(--brand-600)) 55%, rgb(var(--brand-700)) 100%);
+    box-shadow: 0 10px 22px -10px rgb(var(--brand-600) / 0.6);
   }
   .btn-primary:hover {
-    background-image: linear-gradient(135deg, #d62e14 0%, #c10801 55%, #e85002 100%);
+    background-image: linear-gradient(135deg, rgb(var(--brand-600)) 0%, rgb(var(--brand-700)) 55%, rgb(var(--brand-600)) 100%);
   }
   .btn-ghost {
     @apply btn bg-brand-50 text-brand-800 hover:bg-brand-100;
@@ -189,6 +222,16 @@ body {
   animation: pop-in 0.3s ease-out both;
 }
 
+/* Instagram-style story progress bar: fills left→right over the story duration. */
+@keyframes story-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
 /* Rich dark-orange gradient canvas for the compose ("create") page.
    Deep espresso edges with a molten-orange band; grain for depth. */
 .compose-canvas {
@@ -318,20 +361,21 @@ body {
   animation: landing-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* Grainy warm gradient ("grainient") — the aesthetic hero treatment.
-   Light cream → amber → orange → red → near-black, with an SVG grain overlay. */
+/* Grainy gradient ("grainient") — the aesthetic hero treatment. Brand-variable
+   driven so the calendar hero / page headers tint with the active workspace's
+   colour. Runs from a 30%-light tint of the brand colour down to pure black,
+   with an SVG grain overlay. */
 .grainient {
   position: relative;
   isolation: isolate;
-  background-color: #2a0b05;
+  background-color: #000;
   background-image: linear-gradient(
     155deg,
-    #f7e7d2 0%,
-    #f9ad52 20%,
-    #f16001 42%,
-    #d62e14 62%,
-    #8f1f0c 82%,
-    #2a0b05 100%
+    color-mix(in srgb, rgb(var(--brand-500)) 70%, #fff) 0%,
+    rgb(var(--brand-500)) 32%,
+    rgb(var(--brand-700)) 58%,
+    rgb(var(--brand-900)) 80%,
+    #000 100%
   );
 }
 .grainient::before {
@@ -351,9 +395,9 @@ body {
   z-index: 1;
 }
 
-/* Warm gradient text (red → orange). */
+/* Brand gradient text — follows the active workspace's colour. */
 .text-grainient {
-  background-image: linear-gradient(120deg, #e33a1e 0%, #e85002 50%, #f16001 100%);
+  background-image: linear-gradient(120deg, rgb(var(--brand-500)) 0%, rgb(var(--brand-600)) 50%, rgb(var(--brand-700)) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
