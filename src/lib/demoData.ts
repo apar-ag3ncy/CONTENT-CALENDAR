@@ -66,6 +66,8 @@ function mk(p: {
     assigned_to: null,
     notes: null,
     grid_position: p.grid ?? null,
+    is_festive: false,
+    festival_name: null,
     approval_state: 'pending',
     approval_updated_at: null,
     approval_updated_by: null,

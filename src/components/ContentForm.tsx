@@ -33,6 +33,8 @@ export interface ContentFormValues {
   status: ContentStatus
   notes: string | null
   grid_position: number | null
+  is_festive: boolean
+  festival_name: string | null
 }
 
 // --- Monoline icons (stroke, currentColor, sized via className) -------------
@@ -184,7 +186,7 @@ function TypeTabs({
 function CardHead({ children }: { children: ReactNode }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-flame-700">
+      <span className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-flame-700 dark:text-flame-400">
         {children}
       </span>
       <span className="h-px flex-1 bg-gradient-to-r from-flame-200/70 to-transparent" />
@@ -259,6 +261,8 @@ export function ContentForm({
   const [caption, setCaption] = useState(existing?.caption ?? '')
   const [status, setStatus] = useState<ContentStatus>(existing?.status ?? 'scheduled')
   const [notes, setNotes] = useState(existing?.notes ?? '')
+  const [isFestive, setIsFestive] = useState(existing?.is_festive ?? false)
+  const [festivalName, setFestivalName] = useState(existing?.festival_name ?? '')
   const [touched, setTouched] = useState(false)
   const titleRef = useRef<HTMLInputElement>(null)
 
@@ -295,6 +299,8 @@ export function ContentForm({
       status,
       notes: notes.trim() || null,
       grid_position: existing?.grid_position ?? null,
+      is_festive: isFestive,
+      festival_name: isFestive ? festivalName.trim() || null : null,
     })
   }
 
@@ -402,6 +408,33 @@ export function ContentForm({
               placeholder="Anything the team should know… (optional)"
             />
           </Field>
+
+          {/* ── Festive tagging ── */}
+          <div className="rounded-xl border border-flame-200/70 bg-flame-50/50 p-3 dark:border-flame-500/20 dark:bg-flame-500/10">
+            <label className="flex cursor-pointer items-start gap-2.5">
+              <input
+                type="checkbox"
+                checked={isFestive}
+                onChange={(e) => setIsFestive(e.target.checked)}
+                className="mt-0.5 h-4 w-4 flex-none accent-brand-600"
+              />
+              <span className="leading-tight">
+                <span className="block text-[13px] font-semibold text-slate-800">🎉 Festive post</span>
+                <span className="block text-xs text-slate-500">
+                  Tag this as festival content so it shows up separately on the day and in the month&rsquo;s festive view.
+                </span>
+              </span>
+            </label>
+            {isFestive ? (
+              <input
+                className={`${inputCls} mt-3`}
+                value={festivalName}
+                onChange={(e) => setFestivalName(e.target.value)}
+                placeholder="Festival name — e.g. Diwali, Navratri, Eid, Christmas"
+                aria-label="Festival name"
+              />
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -423,7 +456,7 @@ export function ContentForm({
         <button
           type="submit"
           disabled={saving}
-          className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-brand-700 shadow-[0_12px_30px_-12px_rgba(0,0,0,0.6)] transition hover:bg-cream active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-xl bg-[#fff] px-5 py-2.5 text-sm font-semibold text-brand-700 shadow-[0_12px_30px_-12px_rgba(0,0,0,0.6)] transition hover:bg-cream active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {!saving ? (existing ? <IconCheck /> : <IconPlus />) : null}
           {saving ? 'Saving…' : submitLabel}

@@ -51,10 +51,10 @@ export function ViewSwitcher({
           to={hrefs[it.key]}
           className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
             active === it.key
-              ? 'bg-white text-brand-700 shadow-sm'
+              ? 'bg-[#fff] text-brand-700 shadow-sm'
               : hero
                 ? 'text-white/80 hover:text-white'
-                : 'text-slate-600 hover:text-slate-900'
+                : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
           }`}
         >
           {it.label}

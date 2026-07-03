@@ -62,7 +62,7 @@ function WeekDayColumn({
       </Link>
 
       {special ? (
-        <div className="border-b border-brand-100 bg-brand-50 px-3 py-1 text-[11px] font-semibold text-brand-900">
+        <div className="border-b border-brand-100 bg-brand-50 px-3 py-1 text-[11px] font-semibold text-brand-900 dark:border-brand-500/20 dark:text-brand-200">
           {special.label}
         </div>
       ) : null}

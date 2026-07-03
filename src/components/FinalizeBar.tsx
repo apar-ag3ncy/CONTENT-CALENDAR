@@ -96,7 +96,7 @@ export function FinalizeBar({
             <button
               type="button"
               onClick={() => setUnlockOpen(true)}
-              className="rounded-xl border border-green-300 bg-white px-3 py-2 text-sm font-semibold text-green-700 transition hover:bg-green-100"
+              className="rounded-xl border border-green-300 bg-[#fff] px-3 py-2 text-sm font-semibold text-green-700 transition hover:bg-green-100"
             >
               Unlock
             </button>

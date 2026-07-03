@@ -258,6 +258,10 @@ SQL);
     ensure_column($db, 'content_items', 'approval_updated_at', 'approval_updated_at TEXT');
     ensure_column($db, 'content_items', 'approval_updated_by', 'approval_updated_by TEXT');
 
+    // Festive tagging: mark an item as festival content + the festival's name.
+    ensure_column($db, 'content_items', 'is_festive', 'is_festive INTEGER NOT NULL DEFAULT 0');
+    ensure_column($db, 'content_items', 'festival_name', 'festival_name TEXT');
+
     // Per-client brand theme (drives the whole app's colours for that workspace).
     ensure_column($db, 'clients', 'brand_color', 'brand_color TEXT');
     ensure_column($db, 'clients', 'text_color', 'text_color TEXT');
@@ -883,7 +887,7 @@ $ctx = require_auth();
 const CONTENT_COLUMNS = [
     'date', 'day_of_week', 'type', 'post_format', 'media_type', 'media',
     'title', 'caption', 'drive_link', 'category_id', 'status', 'assigned_to',
-    'notes', 'grid_position',
+    'notes', 'grid_position', 'is_festive', 'festival_name',
 ];
 function hydrate_content(array $r): array
 {
@@ -903,6 +907,8 @@ function hydrate_content(array $r): array
         'assigned_to'   => $r['assigned_to'],
         'notes'         => $r['notes'],
         'grid_position' => $r['grid_position'] === null ? null : (int) $r['grid_position'],
+        'is_festive'    => ((int) ($r['is_festive'] ?? 0)) === 1,
+        'festival_name' => $r['festival_name'] ?? null,
         'approval_state'      => $r['approval_state'] ?? 'pending',
         'approval_updated_at' => $r['approval_updated_at'] ?? null,
         'approval_updated_by' => $r['approval_updated_by'] ?? null,
@@ -917,6 +923,12 @@ function encode_content_field(string $key, $value)
     }
     if ($key === 'grid_position') {
         return ($value === null || $value === '') ? null : (int) $value;
+    }
+    if ($key === 'is_festive') {
+        return $value ? 1 : 0;
+    }
+    if ($key === 'festival_name') {
+        return ($value === null || trim((string) $value) === '') ? null : trim((string) $value);
     }
     return $value;
 }

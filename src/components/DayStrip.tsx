@@ -50,7 +50,7 @@ export function DayStrip({
                 active
                   ? 'bg-brand-600 text-white shadow-[0_8px_20px_-8px_rgba(214,46,20,0.6)]'
                   : today
-                    ? 'bg-brand-50 text-brand-700 ring-1 ring-brand-100'
+                    ? 'bg-brand-50 text-brand-700 ring-1 ring-brand-100 dark:text-brand-200 dark:ring-brand-500/30'
                     : weekend
                       ? 'text-slate-400 hover:bg-slate-100'
                       : 'text-slate-600 hover:bg-slate-100'

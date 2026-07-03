@@ -10,6 +10,7 @@ import { ConfirmDialog } from './ConfirmDialog'
 import { Reveal } from './Reveal'
 import { CopyButton, DayFeed } from './FeedPost'
 import { DayNotesThread } from './DayNotesThread'
+import { FestiveList } from './FestiveList'
 import { useDayItems, useDayNote } from '../hooks/useDayData'
 import { useCalendarRange } from '../hooks/useCalendarData'
 import {
@@ -120,6 +121,7 @@ export function DayContent({ dateISO }: { dateISO: string }) {
   const [driveDraft, setDriveDraft] = useState('')
 
   const items = dayItemsQ.items
+  const festiveItems = items.filter((i) => i.is_festive)
   const special = specialDays[0]
   const dayNote = dayNoteQ.data ?? null
 
@@ -232,7 +234,7 @@ export function DayContent({ dateISO }: { dateISO: string }) {
                       href={dayNote.drive_link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex flex-none items-center gap-1 rounded-xl bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-800 transition hover:bg-brand-100"
+                      className="inline-flex flex-none items-center gap-1 rounded-xl bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-800 transition hover:bg-brand-100 dark:bg-brand-500/15 dark:text-brand-300 dark:hover:bg-brand-500/25"
                     >
                       📂 Open
                     </a>
@@ -318,6 +320,26 @@ export function DayContent({ dateISO }: { dateISO: string }) {
           </div>
         </div>
       </Reveal>
+      ) : null}
+
+      {/* ── Festive content for this day, shown separately ── */}
+      {festiveItems.length ? (
+        <Reveal delay={0.14}>
+          <div className="card border-flame-200 dark:border-flame-500/20">
+            <div className="flex items-center gap-3">
+              <span className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-flame-100 text-lg dark:bg-flame-500/15">
+                🎉
+              </span>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Festive content</h3>
+                <p className="text-xs text-slate-500">Festival posts, reels &amp; stories planned for this day.</p>
+              </div>
+            </div>
+            <div className="mt-4">
+              <FestiveList items={festiveItems} onOpen={canEdit ? openEdit : undefined} />
+            </div>
+          </div>
+        </Reveal>
       ) : null}
 
       {/* The day, as an Instagram feed. We show the wireframe while the content

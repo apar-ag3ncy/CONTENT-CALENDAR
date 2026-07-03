@@ -48,15 +48,15 @@ function TeamUserRow({
         </span>
         <div className="grid flex-1 gap-2 sm:grid-cols-3">
           <label className="block">
-            <span className="mb-1 block text-[11px] font-semibold text-slate-400">Name</span>
+            <span className="mb-1 block text-[11px] font-semibold text-slate-500 dark:text-slate-300">Name</span>
             <input className={`w-full ${inputCls}`} value={name} onChange={(e) => setName(e.target.value)} />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[11px] font-semibold text-slate-400">Username</span>
+            <span className="mb-1 block text-[11px] font-semibold text-slate-500 dark:text-slate-300">Username</span>
             <input className={`w-full ${inputCls}`} value={username} onChange={(e) => setUsername(e.target.value)} />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[11px] font-semibold text-slate-400">Set new password</span>
+            <span className="mb-1 block text-[11px] font-semibold text-slate-500 dark:text-slate-300">Set new password</span>
             <input
               className={`w-full ${inputCls}`}
               type="text"

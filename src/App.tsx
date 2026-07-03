@@ -6,6 +6,7 @@ import MonthView from './pages/MonthView'
 import WeekView from './pages/WeekView'
 import DayView from './pages/DayView'
 import GridView from './pages/GridView'
+import FestiveView from './pages/FestiveView'
 import ComposeView from './pages/ComposeView'
 import SettingsView from './pages/SettingsView'
 import ClientsView from './pages/ClientsView'
@@ -62,6 +63,7 @@ export default function App() {
         <Route path="/week/:weekStart" element={<WeekView />} />
         <Route path="/day/:date" element={<DayView />} />
         <Route path="/grid" element={<GridView />} />
+        <Route path="/festive/:month" element={<FestiveView />} />
 
         {/* Team-only: authoring + workspace administration. */}
         <Route element={<TeamRoute />}>

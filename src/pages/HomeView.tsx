@@ -75,7 +75,7 @@ export default function HomeView() {
           <div className="mt-7 flex flex-wrap items-center gap-3">
             <Link
               to={`/month/${currentMonth}`}
-              className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-base font-semibold text-brand-700 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)] transition hover:bg-cream active:scale-[.98]"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#fff] px-5 py-3 text-base font-semibold text-brand-700 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)] transition hover:bg-cream active:scale-[.98]"
             >
               Open {monthLabel} <span aria-hidden>&rarr;</span>
             </Link>
@@ -96,8 +96,8 @@ export default function HomeView() {
             <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white/70 text-brand-600 shadow-sm ring-1 ring-brand-100">
               {a.icon}
             </span>
-            <span className="mt-4 text-base font-extrabold text-ink">{a.label}</span>
-            <span className="mt-0.5 text-sm font-medium text-brand-900/70">{a.sub}</span>
+            <span className="mt-4 text-base font-extrabold text-ink dark:text-cream">{a.label}</span>
+            <span className="mt-0.5 text-sm font-medium text-brand-900/70 dark:text-cream/60">{a.sub}</span>
             <span aria-hidden className="mt-3 text-lg text-brand-600/80 transition group-hover:translate-x-0.5">
               &rarr;
             </span>

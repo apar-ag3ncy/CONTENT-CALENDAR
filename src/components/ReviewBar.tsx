@@ -4,7 +4,8 @@
 import { useState } from 'react'
 import type { ApprovalState, ContentItem } from '../types/database'
 import { isApiConfigured } from '../lib/api'
-import { useAddComment, useComments, useSetApproval } from '../hooks/useReview'
+import { useAddComment, useComments, useDeleteComment, useSetApproval } from '../hooks/useReview'
+import { useIsTeam } from '../lib/auth'
 import { humanError } from '../lib/errors'
 
 const APPROVAL_META: Record<ApprovalState, { label: string; cls: string }> = {
@@ -23,8 +24,10 @@ export function ApprovalPill({ state }: { state: ApprovalState }) {
 }
 
 function CommentThread({ itemId }: { itemId: string }) {
+  const isTeam = useIsTeam()
   const commentsQ = useComments(itemId)
   const addComment = useAddComment(itemId)
+  const del = useDeleteComment(itemId)
   const [draft, setDraft] = useState('')
   const [err, setErr] = useState<string | null>(null)
   const comments = commentsQ.data ?? []
@@ -67,6 +70,15 @@ function CommentThread({ itemId }: { itemId: string }) {
                 </span>
               </div>
               <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">{c.body}</p>
+              {isTeam ? (
+                <button
+                  type="button"
+                  onClick={() => del.mutate(c.id, { onError: (e) => setErr(humanError(e)) })}
+                  className="mt-1 text-[11px] font-semibold text-slate-400 transition hover:text-red-500"
+                >
+                  Delete
+                </button>
+              ) : null}
             </li>
           ))}
         </ul>
@@ -121,7 +133,7 @@ export function ReviewBar({ item }: { item: ContentItem }) {
             type="button"
             onClick={() => setState('approved')}
             disabled={busy || item.approval_state === 'approved'}
-            className="rounded-lg border border-emerald-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-40 dark:bg-transparent"
+            className="rounded-lg border border-emerald-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-40 dark:border-emerald-500/40 dark:!bg-transparent dark:text-emerald-300"
           >
             Approve
           </button>
@@ -129,7 +141,7 @@ export function ReviewBar({ item }: { item: ContentItem }) {
             type="button"
             onClick={() => setState('changes_requested')}
             disabled={busy || item.approval_state === 'changes_requested'}
-            className="rounded-lg border border-amber-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-50 disabled:opacity-40 dark:bg-transparent"
+            className="rounded-lg border border-amber-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-50 disabled:opacity-40 dark:border-amber-500/40 dark:!bg-transparent dark:text-amber-300"
           >
             Request changes
           </button>

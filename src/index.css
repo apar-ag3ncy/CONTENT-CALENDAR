@@ -19,6 +19,15 @@
   --app-heading: #0f172a; /* slate-900 heading colour */
 }
 
+/* Dark mode default for the heading colour. Without this, a themed client that
+   has NO custom text_color (data-themed is on because it set a brand/bg colour)
+   would fall back to the light-mode dark heading above and render headings
+   near-invisible on the dark background. A client's own text_color still wins
+   (applyBrandTheme sets it as an inline style, which beats this rule). */
+.dark {
+  --app-heading: #f3eee8;
+}
+
 html,
 body,
 #root {

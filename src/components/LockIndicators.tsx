@@ -26,15 +26,15 @@ export function LockBanner({ locks }: { locks: PeriodLock[] }) {
     .filter(Boolean)
     .sort()[0]
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
+    <div className="flex items-start gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 dark:border-brand-500/30 dark:bg-brand-500/10">
       <span className="text-lg" aria-hidden>
         🔒
       </span>
       <div className="text-sm">
-        <div className="font-semibold text-brand-800">
+        <div className="font-semibold text-brand-800 dark:text-brand-200">
           Locked — follow this plan
         </div>
-        <div className="text-brand-700">
+        <div className="text-brand-700 dark:text-brand-100/90">
           These days are set — please follow the plan as it is. You can still mark
           items done, but you can&rsquo;t change the planned content.
           {note ? ` Note: ${note}` : ''}

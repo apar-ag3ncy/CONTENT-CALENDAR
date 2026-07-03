@@ -111,22 +111,22 @@ function ClientRow({
           className={`inline-flex h-9 w-9 flex-none place-items-center justify-center rounded-full text-sm font-bold ${
             client.status === 'active'
               ? 'bg-brand-100 text-brand-700 dark:bg-brand-500/20 dark:text-brand-300'
-              : 'bg-slate-200 text-slate-500'
+              : 'bg-slate-200 text-slate-500 dark:bg-white/10 dark:text-slate-300'
           }`}
         >
           {client.name.charAt(0).toUpperCase()}
         </span>
         <div className="grid flex-1 gap-2 sm:grid-cols-3">
           <label className="block">
-            <span className="mb-1 block text-[11px] font-semibold text-slate-400">Workspace name</span>
+            <span className="mb-1 block text-[11px] font-semibold text-slate-500 dark:text-slate-300">Workspace name</span>
             <input className={`w-full ${inputCls}`} value={name} onChange={(e) => setName(e.target.value)} />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[11px] font-semibold text-slate-400">Login username</span>
+            <span className="mb-1 block text-[11px] font-semibold text-slate-500 dark:text-slate-300">Login username</span>
             <input className={`w-full ${inputCls}`} value={username} onChange={(e) => setUsername(e.target.value)} />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[11px] font-semibold text-slate-400">Password</span>
+            <span className="mb-1 block text-[11px] font-semibold text-slate-500 dark:text-slate-300">Password</span>
             <div className="flex items-center gap-1">
               <input
                 className={`w-full ${inputCls}`}
@@ -155,7 +155,7 @@ function ClientRow({
 
       {/* Brand theme — recolours this client's whole workspace */}
       <div className="mt-3">
-        <span className="mb-1.5 block text-[11px] font-semibold text-slate-400">
+        <span className="mb-1.5 block text-[11px] font-semibold text-slate-500 dark:text-slate-300">
           Brand theme (this client&rsquo;s app colours)
         </span>
         <div className="grid gap-2 sm:grid-cols-3">
@@ -167,7 +167,7 @@ function ClientRow({
 
       <div className="mt-2 flex flex-wrap items-center gap-2">
         {client.status === 'disabled' ? (
-          <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-bold text-slate-500">Disabled</span>
+          <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-bold text-slate-500 dark:bg-white/10 dark:text-slate-300">Disabled</span>
         ) : null}
         {isActive ? (
           <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700">

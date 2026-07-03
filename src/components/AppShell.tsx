@@ -269,6 +269,20 @@ function CalendarNav({
         ) : null}
       </div>
 
+      {/* ── Festive content for this month ── */}
+      <Link
+        to={`/festive/${mk}`}
+        onClick={onNavigate}
+        className={`flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-sm font-semibold transition ${
+          pathname.startsWith('/festive/')
+            ? 'border-flame-300 bg-flame-50 text-flame-700 dark:border-flame-500/30 dark:bg-flame-500/10 dark:text-flame-300'
+            : 'border-slate-200 text-slate-600 hover:border-flame-300 hover:bg-flame-50/60 dark:border-white/10 dark:text-slate-300'
+        }`}
+      >
+        <span aria-hidden>🎉</span>
+        Festive posts
+      </Link>
+
       {/* ── Weeks picker — active week on top; list pops only to switch ── */}
       <div>
         <div className="mb-2 flex items-center gap-3 px-1">

@@ -44,6 +44,8 @@ export interface ContentItem {
   assigned_to: string | null
   notes: string | null
   grid_position: number | null // feed order for posts/reels in the Overview
+  is_festive: boolean // tagged as festival content
+  festival_name: string | null // which festival (when is_festive)
   approval_state: ApprovalState // client review state
   approval_updated_at: string | null
   approval_updated_by: string | null

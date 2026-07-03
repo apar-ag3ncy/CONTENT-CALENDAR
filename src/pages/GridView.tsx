@@ -192,6 +192,52 @@ function FeedTile({ item, onOpen }: { item: ContentItem; onOpen: () => void }) {
   )
 }
 
+// ─────────────────────────── grid size toggle ───────────────────────────
+type GridSize = 'laptop' | 'mobile'
+const GRID_SIZE_KEY = 'cc_grid_size'
+
+const IconLaptop = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+    <rect x="4" y="5" width="16" height="11" rx="1.5" />
+    <path d="M2.5 19.5h19" />
+  </svg>
+)
+const IconPhone = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+    <rect x="7" y="3" width="10" height="18" rx="2.5" />
+    <path d="M11 18h2" />
+  </svg>
+)
+
+/** Laptop = larger tiles (full width); Mobile = smaller, tighter tiles (phone width). */
+function GridSizeToggle({ size, onChange }: { size: GridSize; onChange: (s: GridSize) => void }) {
+  const opts: { v: GridSize; label: string; Icon: () => JSX.Element }[] = [
+    { v: 'laptop', label: 'Laptop', Icon: IconLaptop },
+    { v: 'mobile', label: 'Mobile', Icon: IconPhone },
+  ]
+  return (
+    <div className="inline-flex flex-none items-center gap-0.5 rounded-full border border-forest-100 bg-forest-50 p-0.5 dark:border-white/10 dark:bg-white/5">
+      {opts.map(({ v, label, Icon }) => (
+        <button
+          key={v}
+          type="button"
+          onClick={() => onChange(v)}
+          aria-pressed={size === v}
+          title={`${label} view`}
+          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${
+            size === v
+              ? 'bg-forest-700 text-cream shadow-sm dark:bg-brand-500 dark:text-white'
+              : 'text-forest-500 hover:text-forest-800 dark:text-neutral-400 dark:hover:text-neutral-100'
+          }`}
+        >
+          <Icon />
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 function ProfilePreview({
   brand,
   feed,
@@ -201,6 +247,18 @@ function ProfilePreview({
   feed: ContentItem[]
   onOpenItem: (item: ContentItem) => void
 }) {
+  const [size, setSize] = useState<GridSize>(() =>
+    typeof localStorage !== 'undefined' && localStorage.getItem(GRID_SIZE_KEY) === 'mobile' ? 'mobile' : 'laptop',
+  )
+  const changeSize = (s: GridSize) => {
+    setSize(s)
+    try {
+      localStorage.setItem(GRID_SIZE_KEY, s)
+    } catch {
+      /* storage unavailable — keep in-memory only */
+    }
+  }
+
   return (
     <section className="overflow-hidden rounded-[1.75rem] border border-forest-100 bg-white shadow-[0_18px_40px_-28px_rgba(13,27,21,0.45)]">
       <div className="p-6 sm:p-8">
@@ -238,12 +296,15 @@ function ProfilePreview({
         <div className="mb-2 mt-3 flex items-center gap-3 px-3">
           <span className="text-[11px] font-bold uppercase tracking-[0.24em] text-forest-400">The feed</span>
           <span className="h-px flex-1 bg-forest-100" />
+          <GridSizeToggle size={size} onChange={changeSize} />
         </div>
         {feed.length ? (
-          <div className="grid grid-cols-3 gap-2 sm:gap-3">
-            {feed.map((item) => (
-              <FeedTile key={item.id} item={item} onOpen={() => onOpenItem(item)} />
-            ))}
+          <div className={size === 'mobile' ? 'mx-auto max-w-[24rem]' : ''}>
+            <div className={`grid grid-cols-3 ${size === 'mobile' ? 'gap-1' : 'gap-2 sm:gap-3'}`}>
+              {feed.map((item) => (
+                <FeedTile key={item.id} item={item} onOpen={() => onOpenItem(item)} />
+              ))}
+            </div>
           </div>
         ) : (
           <p className="px-3 py-10 text-center text-sm text-forest-400">No feed posts yet.</p>

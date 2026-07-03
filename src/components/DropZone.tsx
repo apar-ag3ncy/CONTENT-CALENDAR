@@ -137,7 +137,7 @@ export function DropZone({
             return (
               <div
                 key={item.path}
-                className={`flex items-center gap-3 rounded-xl border border-white/70 bg-white/60 p-2 shadow-[0_1px_2px_rgba(16,24,40,0.04)] backdrop-blur ${
+                className={`flex items-center gap-3 rounded-xl border border-white/70 bg-white/60 p-2 shadow-[0_1px_2px_rgba(16,24,40,0.04)] backdrop-blur dark:border-white/10 dark:bg-white/10 ${
                   multiple ? 'w-full max-w-xs' : ''
                 }`}
               >
