@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAllContent } from '../hooks/useAdminData'
 import { statusMeta } from '../lib/contentMeta'
-import { parseISODate } from '../lib/dates'
+import {
+  addDays,
+  formatWeekRange,
+  isValidISODate,
+  mondayOf,
+  parseISODate,
+  toISODate,
+} from '../lib/dates'
 import { useActiveWorkspaceName } from '../lib/auth'
 import { Carousel, CarouselVideo } from '../components/Carousel'
 import type { ContentItem, MediaItem } from '../types/database'
@@ -14,6 +22,27 @@ const isImg = (m: MediaItem) => IMG_RE.test(m.name) || IMG_RE.test(m.url)
 const isVid = (m: MediaItem) => VID_RE.test(m.name) || VID_RE.test(m.url)
 const firstImage = (item: ContentItem) => item.media.find(isImg) ?? null
 const firstVideo = (item: ContentItem) => item.media.find(isVid) ?? null
+
+/** A tile needs something to show — Instagram has no post without media. */
+const hasMedia = (item: ContentItem) => Boolean(firstImage(item) || firstVideo(item))
+
+/** Only posts and reels land on the profile grid (stories/captions never do). */
+const isFeedType = (item: ContentItem) => item.type === 'post' || item.type === 'reel'
+
+// ─────────────────────── which statuses count as "planned" ───────────────────────
+/**
+ * ALLOWLIST, deliberately — not a denylist. The database can hold more than the
+ * ContentStatus union: the SQLite schema defaults `status` to 'idea'
+ * (api/index.php:189) and the PATCH route validates nothing, so any string can
+ * land here. A denylist would silently promote an unrecognised value into the
+ * planned week; this errs the other way.
+ *
+ * Applied ONLY to the highlighted week band — NEVER to the feed below it. The
+ * feed stays unfiltered by status so nothing can silently vanish from the grid,
+ * and anything the allowlist rejects is surfaced in the "not shown" counter
+ * rather than just disappearing.
+ */
+const PLANNED_STATUSES = new Set(['scheduled', 'posted'])
 
 const monthShort = (iso: string) =>
   parseISODate(iso).toLocaleDateString('en-US', { month: 'short' })
@@ -154,7 +183,7 @@ function EditorialHeader({ brand }: { brand: string }) {
           Grid Review
         </h1>
         <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/85">
-          The whole feed at a glance — every planned post, newest first.
+          Next week’s plan sitting on top of the live feed — exactly how the profile will look once it goes up.
         </p>
       </div>
     </header>
@@ -170,8 +199,36 @@ function Stat({ n, label }: { n: string; label: string }) {
   )
 }
 
-/** Clean Instagram grid tile — image/reel only, click to open. No text overlay. */
-function FeedTile({ item, onOpen }: { item: ContentItem; onOpen: () => void }) {
+/**
+ * Clean Instagram grid tile — image/reel only, click to open. No text overlay.
+ *
+ * TILE RATIO IS 3:4 ON PURPOSE — it mirrors the Instagram MOBILE profile grid,
+ * which moved from 1:1 to 3:4 in January 2025. Our clients review on a phone,
+ * so mobile is the target. Desktop instagram.com is reported to still render
+ * square thumbnails; that is a review-only surface for us, so we deliberately
+ * do NOT branch the logic for it.
+ *
+ * What 3:4 costs each source shape (children are object-cover, so the tile
+ * ratio IS the crop):
+ *  • a 4:5 post  → ~6.25% of WIDTH trimmed, ~3% a side. Nothing is lost top or
+ *    bottom. (The intuition that a taller tile trims top/bottom is backwards:
+ *    3:4 = 0.750 w/h is NARROWER than 4:5 = 0.800, so height binds.)
+ *  • a 9:16 reel cover → 25% of height, matching Instagram exactly. The old 4:5
+ *    tile cut 29.7%, i.e. it under-promised what the cover would show.
+ *
+ * Instagram has since added an "Adjust Preview" control that lets a user
+ * reposition the thumbnail inside the 3:4 frame, so a centre crop is the
+ * default case rather than a guarantee.
+ */
+function FeedTile({
+  item,
+  onOpen,
+  highlight = false,
+}: {
+  item: ContentItem
+  onOpen: () => void
+  highlight?: boolean
+}) {
   const vid = firstVideo(item)
   const img = firstImage(item)
   const isCarousel = item.type === 'post' && item.media.length > 1
@@ -179,7 +236,12 @@ function FeedTile({ item, onOpen }: { item: ContentItem; onOpen: () => void }) {
     <button
       type="button"
       onClick={onOpen}
-      className="group relative aspect-[4/5] overflow-hidden rounded-lg bg-forest-100 ring-1 ring-forest-100"
+      className={`group relative aspect-[3/4] overflow-hidden rounded-lg bg-forest-100 ${
+        // No ring-offset: it would need a colour matching the panel behind it,
+        // which differs between light and dark. The 2px brand ring reads
+        // clearly against the artwork on its own.
+        highlight ? 'ring-2 ring-brand-500' : 'ring-1 ring-forest-100'
+      }`}
     >
       {vid ? <VideoThumb src={vid.url} /> : img ? <Photo src={img.url} /> : null}
       {item.type === 'reel' || isCarousel ? (
@@ -238,13 +300,104 @@ function GridSizeToggle({ size, onChange }: { size: GridSize; onChange: (s: Grid
   )
 }
 
+// ─────────────────────────── week band ───────────────────────────
+const IconChevronLeft = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+    <path d="M15 6 9 12l6 6" />
+  </svg>
+)
+const IconChevronRight = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+    <path d="m9 6 6 6-6 6" />
+  </svg>
+)
+
+/** The selected week: its tiles, what got left out, and how to move between weeks. */
+type WeekBand = {
+  label: string
+  items: ContentItem[]
+  /** Human summary of week items kept off the grid, e.g. "2 idea · 1 no media". */
+  notShown: string | null
+  /** Stories/captions dated in this week — never on a profile grid by design. */
+  nonFeedCount: number
+  isDefault: boolean
+  onPrev: () => void
+  onNext: () => void
+  onReset: () => void
+}
+
+function WeekBandHeader({ week }: { week: WeekBand }) {
+  const navBtn =
+    'grid h-7 w-7 place-items-center rounded-full border border-forest-100 text-forest-500 transition hover:border-brand-300 hover:text-brand-600 dark:border-white/10 dark:text-neutral-400 dark:hover:text-neutral-100'
+  return (
+    <div className="col-span-3 flex flex-wrap items-center gap-x-3 gap-y-2 px-1 pb-1 pt-2">
+      <span className="inline-flex items-center gap-2">
+        <span className="h-2 w-2 rounded-full bg-brand-500" />
+        <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand-600 dark:text-brand-400">
+          {week.isDefault ? 'Next week' : 'Selected week'}
+        </span>
+      </span>
+      <span className="font-serif text-sm font-bold text-neutral-900 dark:text-neutral-100">{week.label}</span>
+      <span className="text-[11px] text-forest-400 dark:text-neutral-500">
+        {week.items.length} {week.items.length === 1 ? 'post' : 'posts'}
+      </span>
+      <span className="h-px flex-1 bg-gradient-to-r from-brand-300/60 to-transparent" />
+      <span className="inline-flex items-center gap-1">
+        <button type="button" onClick={week.onPrev} title="Previous week" aria-label="Previous week" className={navBtn}>
+          <IconChevronLeft />
+        </button>
+        {!week.isDefault ? (
+          <button
+            type="button"
+            onClick={week.onReset}
+            className="rounded-full px-2 py-1 text-[11px] font-semibold text-forest-500 transition hover:text-brand-600 dark:text-neutral-400"
+          >
+            Next week
+          </button>
+        ) : null}
+        <button type="button" onClick={week.onNext} title="Following week" aria-label="Following week" className={navBtn}>
+          <IconChevronRight />
+        </button>
+      </span>
+    </div>
+  )
+}
+
+/** Says plainly what the week holds that the grid is NOT showing. */
+function NotShownNote({ week }: { week: WeekBand }) {
+  if (!week.notShown && !week.nonFeedCount) return null
+  return (
+    <p className="col-span-3 px-1 pb-1 text-[11px] leading-relaxed text-forest-400 dark:text-neutral-500">
+      {/* Wording matters: these items are NOT hidden — anything with media still
+          renders below. They just don't count as this week's plan. Saying "not
+          shown" contradicted the tiles a few rows down. */}
+      {week.notShown ? (
+        <>Not counted in this week’s plan: {week.notShown} — still shown below. </>
+      ) : null}
+      {week.nonFeedCount ? (
+        <>
+          {week.nonFeedCount} {week.nonFeedCount === 1 ? 'story/caption' : 'stories/captions'} this week —
+          never part of the profile grid.
+        </>
+      ) : null}
+    </p>
+  )
+}
+
 function ProfilePreview({
   brand,
-  feed,
+  band,
+  rest,
+  week,
+  hiddenNoMedia,
   onOpenItem,
 }: {
   brand: string
-  feed: ContentItem[]
+  band: ContentItem[]
+  rest: ContentItem[]
+  week: WeekBand
+  /** Feed-eligible items anywhere in history with nothing to render. */
+  hiddenNoMedia: number
   onOpenItem: (item: ContentItem) => void
 }) {
   const [size, setSize] = useState<GridSize>(() =>
@@ -280,7 +433,7 @@ function ProfilePreview({
               </span>
             </div>
             <div className="mt-3 flex max-w-xs items-center justify-between gap-2">
-              <Stat n={String(feed.length)} label="posts" />
+              <Stat n={String(band.length + rest.length)} label="posts" />
               <Stat n="12.4k" label="followers" />
               <Stat n="284" label="following" />
             </div>
@@ -298,17 +451,56 @@ function ProfilePreview({
           <span className="h-px flex-1 bg-forest-100" />
           <GridSizeToggle size={size} onChange={changeSize} />
         </div>
-        {feed.length ? (
-          <div className={size === 'mobile' ? 'mx-auto max-w-[24rem]' : ''}>
-            <div className={`grid grid-cols-3 ${size === 'mobile' ? 'gap-1' : 'gap-2 sm:gap-3'}`}>
-              {feed.map((item) => (
-                <FeedTile key={item.id} item={item} onOpen={() => onOpenItem(item)} />
-              ))}
-            </div>
+
+        {/* ONE continuous 3-column grid so it reads as a real profile. The week
+            band is pinned to the top and ringed; everything already in the feed
+            sits below it for context, newest first. Section labels are
+            col-span-3 rows inside the same grid rather than separate grids, so
+            the columns never break alignment. */}
+        <div className={size === 'mobile' ? 'mx-auto max-w-[24rem]' : ''}>
+          <div className={`grid grid-cols-3 ${size === 'mobile' ? 'gap-1' : 'gap-2 sm:gap-3'}`}>
+            <WeekBandHeader week={week} />
+
+            {band.map((item) => (
+              <FeedTile key={item.id} item={item} highlight onOpen={() => onOpenItem(item)} />
+            ))}
+
+            {band.length === 0 ? (
+              <p className="col-span-3 rounded-xl border border-dashed border-brand-200 bg-brand-50/40 px-4 py-6 text-center text-sm text-forest-500 dark:border-brand-500/25 dark:bg-brand-500/5 dark:text-neutral-400">
+                Nothing planned for <span className="font-semibold">{week.label}</span> yet.
+              </p>
+            ) : null}
+
+            <NotShownNote week={week} />
+
+            {rest.length ? (
+              <div className="col-span-3 flex items-center gap-3 px-1 pb-1 pt-3">
+                {/* Not "Already in the feed": this section holds everything
+                    outside the selected week — including future posts that
+                    haven't gone up yet — so that label was simply untrue. */}
+                <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-forest-400 dark:text-neutral-500">
+                  Rest of the feed
+                </span>
+                <span className="h-px flex-1 bg-forest-100 dark:bg-white/10" />
+              </div>
+            ) : null}
+
+            {rest.map((item) => (
+              <FeedTile key={item.id} item={item} onOpen={() => onOpenItem(item)} />
+            ))}
+
+            {band.length === 0 && rest.length === 0 ? (
+              <p className="col-span-3 px-3 py-10 text-center text-sm text-forest-400">No feed posts yet.</p>
+            ) : null}
+
+            {hiddenNoMedia ? (
+              <p className="col-span-3 px-1 pt-2 text-[11px] text-forest-400 dark:text-neutral-500">
+                {hiddenNoMedia} {hiddenNoMedia === 1 ? 'item has' : 'items have'} no media attached and can’t appear on
+                a grid.
+              </p>
+            ) : null}
           </div>
-        ) : (
-          <p className="px-3 py-10 text-center text-sm text-forest-400">No feed posts yet.</p>
-        )}
+        </div>
       </div>
     </section>
   )
@@ -423,6 +615,46 @@ function PostModal({ item, brand, onClose }: { item: ContentItem; brand: string;
   )
 }
 
+// ─────────────────────── dev-only payload meter ───────────────────────
+/**
+ * Step 1 deliberately leaves reels at preload="auto" so we can feel what a
+ * cumulative grid actually costs before optimising it. This logs that cost —
+ * video elements mounted, media requests, and bytes transferred — so there is a
+ * hard number to compare against once thumbnails land.
+ *
+ * Dev-only; the body is dead code in a production build.
+ */
+function useGridPayloadMeter(tileCount: number) {
+  useEffect(() => {
+    if (!import.meta.env.DEV || typeof PerformanceObserver === 'undefined') return
+    const MEDIA_RE = /\/(media|photos)\//
+    let timer = 0
+    const report = () => {
+      const media = (performance.getEntriesByType('resource') as PerformanceResourceTiming[]).filter((e) =>
+        MEDIA_RE.test(e.name),
+      )
+      // transferSize is exact here because /media is same-origin.
+      const bytes = media.reduce((n, e) => n + (e.transferSize || e.encodedBodySize || 0), 0)
+      const videos = document.querySelectorAll('video').length
+      console.info(
+        `[grid payload] tiles=${tileCount} · videoEls=${videos} · mediaRequests=${media.length} · ${(
+          bytes / 1048576
+        ).toFixed(1)} MB transferred`,
+      )
+    }
+    // Media streams in lazily, so accumulate and report once it settles.
+    const obs = new PerformanceObserver(() => {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(report, 800)
+    })
+    obs.observe({ type: 'resource', buffered: true })
+    return () => {
+      obs.disconnect()
+      window.clearTimeout(timer)
+    }
+  }, [tileCount])
+}
+
 // ─────────────────────────── page ───────────────────────────
 export default function GridView() {
   const { data } = useAllContent()
@@ -430,16 +662,87 @@ export default function GridView() {
   const brand = useActiveWorkspaceName() ?? 'chheda jewellers'
 
   const [openItem, setOpenItem] = useState<ContentItem | null>(null)
+  const [params, setParams] = useSearchParams()
 
-  // The Instagram-style feed grid only — same view for the Apar team and clients
-  // (no stories, no per-day breakdown).
-  const feed = useMemo(() => all.filter((i) => i.type === 'post' || i.type === 'reel').sort(byDateDesc), [all])
+  // Which week is highlighted, as ?week=YYYY-MM-DD (a Monday) so a given week
+  // can be linked and survives a refresh. A query param rather than a path
+  // param keeps /grid a single route and leaves AppShell's active-nav check
+  // (pathname === '/grid') intact.
+  const weekParam = params.get('week') ?? undefined
+  const defaultMonday = useMemo(() => mondayOf(addDays(new Date(), 7)), [])
+  const monday = isValidISODate(weekParam) ? mondayOf(parseISODate(weekParam)) : defaultMonday
+  const weekStart = toISODate(monday)
+  const weekEnd = toISODate(addDays(monday, 6))
+  const isDefaultWeek = weekStart === toISODate(defaultMonday)
+
+  const goWeek = (m: Date) => {
+    const next = new URLSearchParams(params)
+    if (toISODate(m) === toISODate(defaultMonday)) next.delete('week')
+    else next.set('week', toISODate(m))
+    setParams(next)
+  }
+
+  const { band, rest, notShown, nonFeedCount, hiddenNoMedia } = useMemo(() => {
+    const inWeek = (d: string) => d >= weekStart && d <= weekEnd
+
+    // Only posts/reels reach a profile grid, and only if they have something to
+    // show — a media-less item would render as a blank tile, and in a
+    // cumulative view they would cluster at the very top. Excluded outright and
+    // counted instead, never silently dropped.
+    const feedType = all.filter(isFeedType)
+    const renderable = feedType.filter(hasMedia)
+
+    // The band is status-filtered; the feed below it is NOT. Anything the
+    // allowlist rejects still appears in context, just not as planned content.
+    const bandItems = renderable.filter((i) => inWeek(i.date) && PLANNED_STATUSES.has(i.status)).sort(byDateDesc)
+    const bandIds = new Set(bandItems.map((i) => i.id))
+    const restItems = renderable.filter((i) => !bandIds.has(i.id)).sort(byDateDesc)
+
+    // Why a week item missed the band — missing media first, then status.
+    const reasons = new Map<string, number>()
+    for (const it of feedType.filter((i) => inWeek(i.date))) {
+      const key = !hasMedia(it)
+        ? 'no media'
+        : !PLANNED_STATUSES.has(it.status)
+          ? statusMeta(it.status).label.toLowerCase()
+          : null
+      if (key) reasons.set(key, (reasons.get(key) ?? 0) + 1)
+    }
+
+    return {
+      band: bandItems,
+      rest: restItems,
+      notShown: reasons.size ? [...reasons].map(([k, n]) => `${n} ${k}`).join(' · ') : null,
+      nonFeedCount: all.filter((i) => !isFeedType(i) && inWeek(i.date)).length,
+      hiddenNoMedia: feedType.length - renderable.length,
+    }
+  }, [all, weekStart, weekEnd])
+
+  useGridPayloadMeter(band.length + rest.length)
+
+  const week: WeekBand = {
+    label: formatWeekRange(monday),
+    items: band,
+    notShown,
+    nonFeedCount,
+    isDefault: isDefaultWeek,
+    onPrev: () => goWeek(addDays(monday, -7)),
+    onNext: () => goWeek(addDays(monday, 7)),
+    onReset: () => goWeek(defaultMonday),
+  }
 
   return (
     <div className="space-y-7">
       <EditorialHeader brand={brand} />
 
-      <ProfilePreview brand={brand} feed={feed} onOpenItem={setOpenItem} />
+      <ProfilePreview
+        brand={brand}
+        band={band}
+        rest={rest}
+        week={week}
+        hiddenNoMedia={hiddenNoMedia}
+        onOpenItem={setOpenItem}
+      />
 
       {openItem ? <PostModal item={openItem} brand={brand} onClose={() => setOpenItem(null)} /> : null}
     </div>

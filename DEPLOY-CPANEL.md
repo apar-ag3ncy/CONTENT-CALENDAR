@@ -32,9 +32,14 @@ database credentials**:
 
 ## First-time deploy
 
-1. **Build:** `npm install && npm run build` with `VITE_SAME_ORIGIN=1` (set in
-   `.env.production`). This also bundles `content-calendar-cpanel.zip` — the whole
-   document-root layout, ready to extract.
+1. **Build the deploy bundle:** `npm install && npm run build:cpanel`.
+   That runs the production build with `VITE_SAME_ORIGIN=1` and packages
+   `content-calendar-cpanel.zip` — the whole document-root layout, ready to extract.
+
+   > ⚠️ `npm run build` alone is **not** enough: it only writes `dist/` and never
+   > touches the zip. Running it and then uploading `content-calendar-cpanel.zip`
+   > deploys whatever the **last** `build:cpanel` produced — i.e. stale code, with
+   > no error to warn you. Always use `build:cpanel` to make a deployable zip.
 2. **Subdomain (optional):** cPanel → Domains → create e.g. `calendar.yourdomain.com`;
    if its DNS is managed elsewhere, add an A record `calendar → <hosting IP>`.
 3. **Upload:** File Manager → the document root → upload the zip → **Extract**.
@@ -91,7 +96,8 @@ The config values are ignored once accounts exist; you can blank them out.
 
 ## Updating later
 
-Rebuild and re-upload — but **do NOT delete the `api` folder**, because
+Rebuild with `npm run build:cpanel` and re-upload — but **do NOT delete the
+`api` folder**, because
 `api/data/` holds your live database **and `api/config.php` holds your
 `secret_key`** (needed to read client passwords). The deploy zip deliberately
 **excludes `api/data/` and `api/config.php`**, so extracting over the existing

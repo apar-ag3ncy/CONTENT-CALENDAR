@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { api, isApiConfigured } from '../lib/api'
 import { toast } from '../lib/toast'
+import { UploadProgress, type UploadState } from './UploadProgress'
 import type { MediaItem } from '../types/database'
 
 /** Re-export alias kept for compatibility with existing imports. */
@@ -41,6 +42,7 @@ export function DropZone({
   disabled = false,
   accept = 'image/*,video/*',
   tall = false,
+  onUploadingChange,
 }: {
   value: MediaItem[]
   onChange: (value: MediaItem[]) => void
@@ -48,10 +50,18 @@ export function DropZone({
   disabled?: boolean
   accept?: string
   tall?: boolean
+  /**
+   * Fires whenever an upload starts/stops. The parent form needs this to block
+   * Save while bytes are still in flight — otherwise it submits `media: []`,
+   * the item is created with no media, and this component's unmount cleanup
+   * then deletes the just-uploaded file from the server.
+   */
+  onUploadingChange?: (busy: boolean) => void
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [progress, setProgress] = useState<UploadState | null>(null)
   const [error, setError] = useState<string | null>(null)
   const mountedRef = useRef(true)
   // Paths uploaded in THIS session (not yet necessarily saved to the DB).
@@ -60,18 +70,38 @@ export function DropZone({
   // several files resolve back-to-back.
   const valueRef = useRef(value)
   valueRef.current = value
+  // Held in a ref so the unmount cleanup always calls the latest callback.
+  const busyCbRef = useRef(onUploadingChange)
+  busyCbRef.current = onUploadingChange
+
+  /** Set the busy flag and tell the parent, so Save can be blocked in step. */
+  function setBusy(busy: boolean) {
+    setUploading(busy)
+    busyCbRef.current?.(busy)
+  }
+
   useEffect(() => {
     // Re-set on mount so a StrictMode remount doesn't leave us flagged unmounted.
     mountedRef.current = true
     return () => {
       mountedRef.current = false
+      // Release the parent's lock on unmount. Without this, switching the type
+      // tab to Caption mid-upload unmounts this component and would strand the
+      // form's `uploading` flag at true — permanently disabling Save.
+      busyCbRef.current?.(false)
     }
   }, [])
 
   const canUpload = isApiConfigured && !disabled && !uploading
 
-  async function uploadOne(file: File): Promise<MediaItem | null> {
-    const item = await api.uploadMedia(file)
+  async function uploadOne(file: File, index: number, count: number): Promise<MediaItem | null> {
+    // file.size is known up front, so the meter starts at a real 0% rather than
+    // sitting indeterminate until the first progress event lands.
+    setProgress({ name: file.name, loaded: 0, total: file.size, index, count, startedAt: Date.now() })
+    const item = await api.uploadMedia(file, (loaded, total) => {
+      if (!mountedRef.current) return
+      setProgress((p) => (p ? { ...p, loaded, total: total || p.total } : p))
+    })
     if (!mountedRef.current) {
       // Form was closed mid-upload — clean up the orphan instead of leaking it.
       await api.deleteMedia(item.path).catch(() => {})
@@ -88,13 +118,34 @@ export function DropZone({
       return
     }
     if (files.length === 0) return
-    // Single-file mode keeps only the most recent selection.
-    const list = multiple ? files : files.slice(-1)
-    setUploading(true)
+    // Single-file mode takes ONE file. A drag-drop of several lands on the
+    // wrapping button, not the <input>, so `multiple={false}` doesn't constrain
+    // it — without this the extras were dropped in silence. Keep the first
+    // (what the user sees at the front of the drag) and say so.
+    const list = multiple ? files : files.slice(0, 1)
+    if (!multiple && files.length > 1) {
+      toast.info(
+        'Only one file added',
+        `This post takes a single file — kept “${list[0].name}”. Switch Format to Carousel to add several.`,
+      )
+    }
+    setBusy(true)
     try {
-      for (const file of list) {
-        const item = await uploadOne(file)
+      for (const [i, file] of list.entries()) {
+        const item = await uploadOne(file, i + 1, list.length)
         if (!mountedRef.current || !item) return
+        // Single-file mode REPLACES the previous selection. If we uploaded that
+        // previous file this session and it was never saved to an item, delete
+        // it — otherwise it sits on the server forever referenced by nothing,
+        // quietly eating the hosting disk quota.
+        if (!multiple) {
+          for (const prev of valueRef.current) {
+            if (sessionPaths.current.has(prev.path)) {
+              sessionPaths.current.delete(prev.path)
+              void api.deleteMedia(prev.path).catch(() => {})
+            }
+          }
+        }
         const base = multiple ? valueRef.current : []
         onChange([...base, item])
         // Notify (top-right) once the file is stored on the server.
@@ -105,7 +156,10 @@ export function DropZone({
       if (mountedRef.current) setError(msg)
       toast.error('Couldn’t add — try again', msg)
     } finally {
-      if (mountedRef.current) setUploading(false)
+      if (mountedRef.current) {
+        setBusy(false)
+        setProgress(null)
+      }
     }
   }
 
@@ -178,6 +232,10 @@ export function DropZone({
           })}
         </div>
       ) : null}
+
+      {/* Live progress sits directly above the drop target, so the eye stays in
+          the same place it just dropped the file. */}
+      {progress ? <UploadProgress state={progress} /> : null}
 
       <button
         type="button"

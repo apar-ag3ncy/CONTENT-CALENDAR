@@ -33,6 +33,9 @@ export const API_BASE = sameOrigin ? '' : (RAW ?? '').trim().replace(/\/+$/, '')
 /** True once a backend is configured — unlocks real reading & editing. */
 export const isApiConfigured = sameOrigin || API_BASE.length > 0
 
+/** Upload progress callback. `total === 0` means the size isn't known yet. */
+export type UploadProgressFn = (loaded: number, total: number) => void
+
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const isForm = init?.body instanceof FormData
   const token = getToken()
@@ -208,11 +211,69 @@ export const api = {
     req<PeriodLock>(`/api/locks`, { method: 'POST', body: JSON.stringify(lock) }),
   deleteLock: (id: string) => req<void>(`/api/locks/${id}`, { method: 'DELETE' }),
 
-  // ── Media (photos/videos in GridFS) ──
-  uploadMedia: (file: File): Promise<MediaItem> => {
-    const fd = new FormData()
-    fd.append('file', file)
-    return req<MediaItem>(`/api/media`, { method: 'POST', body: fd })
-  },
+  // ── Media (photos/videos on disk, served at /media) ──
+  /**
+   * Upload one file, optionally reporting real byte-level progress.
+   *
+   * This is the ONE endpoint that doesn't go through req(): fetch() cannot
+   * report upload progress at all (there is no upstream progress event, and
+   * request streaming isn't usable here), so a big reel would sit at "Uploading…"
+   * for minutes with nothing to show. XMLHttpRequest's `upload.onprogress` is
+   * the only cross-browser way to know how many bytes have actually left the
+   * machine. Auth headers, 401 handling and the error shape mirror req().
+   */
+  uploadMedia: (file: File, onProgress?: UploadProgressFn): Promise<MediaItem> =>
+    new Promise<MediaItem>((resolve, reject) => {
+      const fd = new FormData()
+      fd.append('file', file)
+
+      const xhr = new XMLHttpRequest()
+      xhr.open('POST', `${API_BASE}/api/media`)
+
+      const token = getToken()
+      const clientId = getActiveClientId()
+      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+      if (clientId) xhr.setRequestHeader('X-Client-Id', clientId)
+      // Deliberately no content-type: the browser must set the multipart
+      // boundary itself, and overriding it breaks the upload server-side.
+
+      if (onProgress) {
+        xhr.upload.onprogress = (e) => {
+          // lengthComputable is false for a moment on some browsers; total 0
+          // signals "indeterminate" to the caller rather than a bogus 0%.
+          onProgress(e.loaded, e.lengthComputable ? e.total : 0)
+        }
+      }
+
+      xhr.onload = () => {
+        // Same session-death handling as req().
+        if (xhr.status === 401 && token) {
+          const target = getSession()?.kind === 'team' ? '/admin' : '/'
+          setSession(null)
+          if (typeof window !== 'undefined' && window.location.pathname !== target) {
+            window.location.assign(target)
+          }
+        }
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            resolve(JSON.parse(xhr.responseText) as MediaItem)
+          } catch {
+            reject(new Error('The server returned a malformed response.'))
+          }
+          return
+        }
+        let msg = `Request failed (${xhr.status})`
+        try {
+          const e = JSON.parse(xhr.responseText)
+          if (e?.error) msg = e.error
+        } catch {
+          /* non-JSON error body (e.g. an HTML 413 page from Apache) */
+        }
+        reject(new Error(msg))
+      }
+      xhr.onerror = () => reject(new Error('Network error — check your connection and try again.'))
+      xhr.onabort = () => reject(new Error('Upload cancelled.'))
+      xhr.send(fd)
+    }),
   deleteMedia: (path: string) => req<void>(`/api/media/${path}`, { method: 'DELETE' }),
 }

@@ -101,7 +101,16 @@ export async function refreshClients(): Promise<void> {
   const s = getSession()
   if (!s) return
   const me = await api.me()
-  const stillValid = s.activeClientId != null && me.clients.some((c) => c.id === s.activeClientId)
+  // The workspace must still be ACTIVE, not merely present. GET /api/auth/me
+  // returns disabled clients too (the Clients page needs them), but the backend
+  // drops an X-Client-Id pointing at a disabled workspace — so staying pinned to
+  // one made every scoped request fail with 400 "No active client workspace",
+  // leaving the calendar and grid silently empty until the user guessed to
+  // switch workspace. Fall back to the first workspace that actually works.
+  const stillValid =
+    s.activeClientId != null &&
+    me.clients.some((c) => c.id === s.activeClientId && c.status === 'active')
+  const firstUsable = me.clients.find((c) => c.status === 'active')?.id ?? null
   patchSession({
     clients: me.clients,
     activeClientId:
@@ -109,7 +118,7 @@ export async function refreshClients(): Promise<void> {
         ? s.activeClientId // clients are pinned to their own workspace
         : stillValid
           ? s.activeClientId
-          : me.clients[0]?.id ?? null,
+          : firstUsable,
   })
 }
 

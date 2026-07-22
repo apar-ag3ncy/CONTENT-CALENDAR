@@ -471,7 +471,11 @@ function WorkspaceSwitcher() {
               Switch workspace
             </p>
             <div className="max-h-72 overflow-y-auto">
-              {session.clients.map((c) => {
+              {/* Disabled workspaces are filtered out: the backend refuses an
+                  X-Client-Id pointing at one, so selecting it would 400 every
+                  scoped request and leave the app looking empty. They remain
+                  visible (and re-enablable) on the Clients page. */}
+              {session.clients.filter((c) => c.status === 'active').map((c) => {
                 const isActive = c.id === session.activeClientId
                 return (
                   <button

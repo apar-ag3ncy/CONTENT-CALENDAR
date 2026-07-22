@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "build:cpanel": "bash build-cpanel-zip.sh",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
   },

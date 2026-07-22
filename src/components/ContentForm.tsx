@@ -247,16 +247,24 @@ export function ContentForm({
   onSubmit: (values: ContentFormValues) => void
   onCancel: () => void
 }) {
-  const [type, setType] = useState<ContentType>(
-    existing?.type ?? presetType ?? 'post',
-  )
+  const initialType: ContentType = existing?.type ?? presetType ?? 'post'
+  const [type, setType] = useState<ContentType>(initialType)
   const [format, setFormat] = useState<PostFormat>(
     existing?.post_format ?? 'static',
   )
+  // Must key off initialType, not existing?.type: creating a NEW reel from the
+  // day page's "Reel" tile passes presetType='reel' with existing=null, so
+  // testing existing?.type left the Media toggle on "Photo" while the type was
+  // Reel — the item saved as a reel with media_type 'photo'.
   const [mediaType, setMediaType] = useState<MediaType>(
-    existing?.media_type ?? (existing?.type === 'reel' ? 'video' : 'photo'),
+    existing?.media_type ?? (initialType === 'reel' ? 'video' : 'photo'),
   )
   const [media, setMedia] = useState<MediaItem[]>(existing?.media ?? [])
+  // True while DropZone has bytes in flight. Saving during an upload would
+  // submit media: [] (DropZone only reports the file once the XHR resolves),
+  // create the item with no media, unmount the form, and then delete the
+  // just-uploaded file from the server — silent, unreported data loss.
+  const [uploading, setUploading] = useState(false)
   const [title, setTitle] = useState(existing?.title ?? '')
   const [caption, setCaption] = useState(existing?.caption ?? '')
   const [status, setStatus] = useState<ContentStatus>(existing?.status ?? 'scheduled')
@@ -279,6 +287,9 @@ export function ContentForm({
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setTouched(true)
+    // Belt and braces: the Save button is disabled while uploading, but pressing
+    // Enter inside a text input still submits the form.
+    if (uploading) return
     if (titleError) {
       titleRef.current?.focus()
       titleRef.current?.scrollIntoView({ block: 'center' })
@@ -346,7 +357,7 @@ export function ContentForm({
                 />
               </div>
             </div>
-            <DropZone value={media} onChange={setMedia} multiple={isCarousel} tall />
+            <DropZone value={media} onChange={setMedia} multiple={isCarousel} tall onUploadingChange={setUploading} />
             <p className="text-center text-xs text-slate-400">
               {isCarousel ? 'Carousel — add several photos.' : 'Drag a file in, or click to browse.'}
             </p>
@@ -455,11 +466,11 @@ export function ContentForm({
         </button>
         <button
           type="submit"
-          disabled={saving}
+          disabled={saving || uploading}
           className="inline-flex items-center gap-2 rounded-xl bg-[#fff] px-5 py-2.5 text-sm font-semibold text-brand-700 shadow-[0_12px_30px_-12px_rgba(0,0,0,0.6)] transition hover:bg-cream active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {!saving ? (existing ? <IconCheck /> : <IconPlus />) : null}
-          {saving ? 'Saving…' : submitLabel}
+          {!saving && !uploading ? (existing ? <IconCheck /> : <IconPlus />) : null}
+          {saving ? 'Saving…' : uploading ? 'Waiting for upload…' : submitLabel}
         </button>
       </div>
     </form>

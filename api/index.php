@@ -939,6 +939,161 @@ function content_by_id(string $id, string $clientId): ?array
     $row = $st->fetch();
     return $row ? hydrate_content($row) : null;
 }
+/**
+ * Is this date inside a finalized (locked) period for this workspace?
+ *
+ * "Finalize" existed only in the UI: the calendar hid the edit controls, but the
+ * API happily accepted writes to a locked week. So a stale browser tab, a second
+ * window opened before the lock, or any direct call could silently change content
+ * the client had been told was final. This is the server-side half of the feature.
+ */
+function date_is_locked(PDO $db, string $clientId, ?string $date): bool
+{
+    if ($date === null || $date === '') {
+        return false;
+    }
+    $st = $db->prepare(
+        "SELECT 1 FROM period_locks
+         WHERE client_id = ? AND start_date <= ? AND end_date >= ? LIMIT 1"
+    );
+    $st->execute([$clientId, $date, $date]);
+    return (bool) $st->fetchColumn();
+}
+
+/** Refuse a write that targets a finalized date. 423 = Locked. */
+function reject_if_locked(PDO $db, string $clientId, ?string $date, string $what): void
+{
+    if (date_is_locked($db, $clientId, $date)) {
+        fail(
+            $what . ' is inside a finalized period (' . $date . '). '
+            . 'Unfinalize that week or month first, then try again.',
+            423
+        );
+    }
+}
+
+/**
+ * Drop a hardening .htaccess into the uploads folder (self-healing, like the
+ * one api/data/ gets when the DB is opened).
+ *
+ * media/ can't simply be denied — the browser has to load the photos. So instead
+ * of blocking reads we block EXECUTION: without this, an uploaded .php sits in a
+ * web-served folder and Apache runs it as server code. The upload allow-list is
+ * the primary defence; this is the second layer for anything already on disk, or
+ * for a host where the allow-list is somehow bypassed.
+ *
+ * php_flag is only valid under mod_php (it 500s the whole folder under PHP-FPM),
+ * hence the IfModule guards; the RemoveHandler/FilesMatch rules cover FPM.
+ */
+function harden_media_dir(string $dir): void
+{
+    $ht = $dir . '/.htaccess';
+    if (is_file($ht)) {
+        return;
+    }
+    @file_put_contents($ht, <<<'HTACCESS'
+# Uploaded media. Readable by the browser, NEVER executed.
+# Managed by api/index.php (harden_media_dir) — safe to leave in place.
+
+<IfModule mod_php.c>
+  php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+  php_flag engine off
+</IfModule>
+<IfModule mod_php8.c>
+  php_flag engine off
+</IfModule>
+
+# Strip any handler that would execute these, then refuse to serve them at all.
+RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .php8 .phps .cgi .pl .py .sh .shtml
+RemoveType .php .phtml .phps .cgi .pl .py .sh .shtml
+
+<FilesMatch "(?i)\.(php\d?|phtml|phps|cgi|pl|py|sh|shtml|htaccess|htpasswd)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>
+
+Options -ExecCGI -Indexes
+
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+</IfModule>
+HTACCESS
+    );
+}
+
+/**
+ * Delete uploaded files that no content item references.
+ *
+ * Orphans are created by ordinary use: upload a photo then close the form,
+ * navigate away, or lose the tab. The frontend cleans up the cases it can see,
+ * but it can't cover a crashed browser — and on shared hosting these silently
+ * accumulate against the disk quota until uploads start failing.
+ *
+ * Deliberately conservative:
+ *  - only files older than ORPHAN_MIN_AGE (24h), so a file sitting in a form
+ *    that's open right now is never touched;
+ *  - only files referenced by NO item in ANY workspace;
+ *  - rate-limited to once every 6h via a stamp file, so it isn't a full scan on
+ *    every upload;
+ *  - dotfiles (notably .htaccess) are always skipped.
+ */
+function sweep_orphan_media(PDO $db, string $dir): void
+{
+    $ORPHAN_MIN_AGE = 86400;   // 24 hours
+    $SWEEP_INTERVAL = 21600;   // 6 hours
+
+    $stamp = $dir . '/.last-sweep';
+    $now = time();
+    if (is_file($stamp) && ($now - (int) @filemtime($stamp)) < $SWEEP_INTERVAL) {
+        return;
+    }
+    @touch($stamp);
+
+    $files = @scandir($dir);
+    if ($files === false) {
+        return;
+    }
+
+    // Every filename any item still points at, across all workspaces.
+    $referenced = [];
+    try {
+        foreach ($db->query("SELECT media FROM content_items WHERE media IS NOT NULL AND media != ''") as $r) {
+            foreach (json_decode((string) $r['media'], true) ?: [] as $m) {
+                $p = is_string($m) ? $m : ($m['path'] ?? ($m['url'] ?? ''));
+                if ($p !== '') {
+                    $referenced[basename((string) $p)] = true;
+                }
+            }
+        }
+    } catch (Throwable $e) {
+        return; // never delete on a partial picture
+    }
+
+    foreach ($files as $f) {
+        if ($f === '' || $f[0] === '.') {
+            continue; // '.', '..', .htaccess, .last-sweep
+        }
+        $path = $dir . '/' . $f;
+        if (!is_file($path)) {
+            continue;
+        }
+        if (isset($referenced[$f])) {
+            continue;
+        }
+        if (($now - (int) @filemtime($path)) < $ORPHAN_MIN_AGE) {
+            continue; // too new — may belong to a form that's open right now
+        }
+        @unlink($path);
+    }
+}
+
 function delete_media_files(array $paths): void
 {
     global $MEDIA_DIR;
@@ -1066,6 +1221,7 @@ if ($r0 === 'content') {
         if (empty($b['date']) || empty($b['type'])) {
             fail('date and type are required');
         }
+        reject_if_locked($db, $clientId, (string) $b['date'], 'That date');
         $id = new_id();
         $now = now_iso();
         $cols = ['id', 'client_id'];
@@ -1093,6 +1249,56 @@ if ($r0 === 'content') {
         if ($method === 'PATCH') {
             require_team($ctx);
             $b = body_json();
+
+            // A client approves SPECIFIC content. If the team then changes what
+            // was reviewed, the old approval no longer applies — leaving it as
+            // "approved" means the record claims the client signed off on a
+            // caption/image they never saw. Reset to pending so it goes back
+            // through review.
+            //
+            // Only fields the client actually sees count. Internal bookkeeping
+            // (status, notes, grid_position, assignment, category) must NOT
+            // invalidate an approval. We compare real values rather than reacting
+            // to key presence, because the edit form submits the whole object on
+            // save — reacting to presence alone would reset approvals on an
+            // open-and-save-with-no-changes.
+            $REVIEWED_FIELDS = ['date', 'type', 'post_format', 'media', 'title', 'caption'];
+            $current = content_by_id($id, $clientId);
+
+            // Finalized periods are read-only for PLANNED CONTENT — but not for
+            // bookkeeping. LockIndicators.tsx tells the user "You can still mark
+            // items done, but you can't change the planned content", and a locked
+            // week is precisely the one being executed, so marking a post as
+            // Posted has to keep working. Exempt patches that touch nothing but
+            // these fields; extend the list deliberately, never casually.
+            $LOCK_EXEMPT_FIELDS = ['status'];
+            $touched = array_values(array_intersect(CONTENT_COLUMNS, array_keys($b)));
+            $bookkeepingOnly = $touched !== [] && array_diff($touched, $LOCK_EXEMPT_FIELDS) === [];
+
+            if ($current && !$bookkeepingOnly) {
+                reject_if_locked($db, $clientId, $current['date'] ?? null, 'This item’s date');
+            }
+            // Moving an item ACROSS a lock boundary is always a content change,
+            // even if the rest of the payload is bookkeeping.
+            if (array_key_exists('date', $b)) {
+                reject_if_locked($db, $clientId, (string) $b['date'], 'The new date');
+            }
+
+            $resetApproval = false;
+            if ($current && ($current['approval_state'] ?? 'pending') !== 'pending') {
+                foreach ($REVIEWED_FIELDS as $c) {
+                    if (!array_key_exists($c, $b)) {
+                        continue;
+                    }
+                    // Compare canonically: media is an array here and JSON in the
+                    // DB, so normalise both through json_encode before comparing.
+                    if (json_encode($b[$c]) !== json_encode($current[$c] ?? null)) {
+                        $resetApproval = true;
+                        break;
+                    }
+                }
+            }
+
             $sets = [];
             $vals = [];
             foreach (CONTENT_COLUMNS as $c) {
@@ -1100,6 +1306,16 @@ if ($r0 === 'content') {
                     $sets[] = "`$c` = ?";
                     $vals[] = encode_content_field($c, $b[$c]);
                 }
+            }
+            // Set explicitly — approval_* are deliberately absent from
+            // CONTENT_COLUMNS so they can't be patched directly by a caller.
+            if ($resetApproval) {
+                $sets[] = 'approval_state = ?';
+                $vals[] = 'pending';
+                $sets[] = 'approval_updated_at = ?';
+                $vals[] = now_iso();
+                $sets[] = 'approval_updated_by = ?';
+                $vals[] = null;
             }
             $sets[] = 'updated_at = ?';
             $vals[] = now_iso();
@@ -1112,6 +1328,14 @@ if ($r0 === 'content') {
         }
         if ($method === 'DELETE') {
             require_team($ctx);
+            // Deleting out of a finalized period is a content change like any
+            // other — the client was told that week was final.
+            $drow = $db->prepare("SELECT date FROM content_items WHERE id = ? AND client_id = ?");
+            $drow->execute([$id, $clientId]);
+            $ddate = $drow->fetchColumn();
+            if ($ddate !== false) {
+                reject_if_locked($db, $clientId, (string) $ddate, 'This item’s date');
+            }
             // Derive the files to unlink from the row's OWN media (scoped to this
             // client) — never from caller-supplied paths, which could name another
             // workspace's files.
@@ -1427,6 +1651,22 @@ if ($r0 === 'media') {
     $clientId = require_client_scope($ctx); // must be operating inside a workspace
     require_team($ctx);
     if ($method === 'POST' && $n === 1) {
+        // A file bigger than post_max_size never reaches us: PHP discards the
+        // whole request body BEFORE this script runs, leaving $_FILES and $_POST
+        // empty. The UPLOAD_ERR_INI_SIZE branch below can't catch that (there is
+        // no file entry to inspect), so without this check the most common
+        // real-world failure reports the useless "No file uploaded".
+        // A non-zero Content-Length with nothing parsed is the signature.
+        $contentLength = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
+        if ($contentLength > 0 && empty($_FILES) && empty($_POST)) {
+            $limit = ini_get('post_max_size');
+            fail(
+                'File is too large for this server (sent ' . round($contentLength / 1048576, 1)
+                . ' MB, limit is ' . $limit . '). Raise post_max_size and upload_max_filesize'
+                . ' — see DEPLOY-CPANEL.md, "Large video uploads".',
+                413
+            );
+        }
         if (empty($_FILES['file'])) {
             fail('No file uploaded');
         }
@@ -1443,12 +1683,42 @@ if ($r0 === 'media') {
         if (!is_writable($MEDIA_DIR)) {
             fail('Media folder is not writable. chmod it to 755 (see DEPLOY-CPANEL.md).', 500);
         }
+        harden_media_dir($MEDIA_DIR);
+
+        // EXTENSION ALLOW-LIST. Previously ANY alphanumeric extension was
+        // accepted, so a .php upload landed in a web-served folder and was
+        // executed by Apache as server code — remote code execution from the
+        // upload form. An allow-list is the primary defence because it works on
+        // every host regardless of web-server config; harden_media_dir() is the
+        // belt-and-braces second layer.
+        //
+        // The list mirrors exactly what the frontend can actually display
+        // (IMG_RE / VID_RE in GridView.tsx and FeedPost.tsx). Anything outside
+        // it would upload "successfully" and then render as a blank tile, so
+        // rejecting it with a clear message is strictly better. SVG is excluded
+        // deliberately: it can carry script, Instagram doesn't accept it, and it
+        // would be served from our own origin.
+        $ALLOWED_EXT = [
+            'jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'bmp', // images
+            'mp4', 'mov', 'm4v', 'webm',                        // video
+        ];
         $ext = strtolower((string) pathinfo($f['name'], PATHINFO_EXTENSION));
-        $ext = preg_replace('/[^a-z0-9]/', '', $ext) ?: 'bin';
+        $ext = preg_replace('/[^a-z0-9]/', '', $ext) ?: '';
+        if (!in_array($ext, $ALLOWED_EXT, true)) {
+            fail(
+                'That file type isn’t supported' . ($ext !== '' ? ' (.' . $ext . ')' : '')
+                . '. Photos: JPG, PNG, GIF, WEBP, AVIF, BMP. Videos: MP4, MOV, M4V, WEBM.'
+                . ' iPhone HEIC photos need exporting as JPG first.',
+                415
+            );
+        }
         $filename = bin2hex(random_bytes(8)) . '.' . $ext;
         if (!move_uploaded_file($f['tmp_name'], $MEDIA_DIR . '/' . $filename)) {
             fail('Could not save the uploaded file', 500);
         }
+        // Opportunistic housekeeping — self-rate-limited to once every 6h.
+        sweep_orphan_media($db, $MEDIA_DIR);
+
         send_json([
             'url'  => $MEDIA_URL . '/' . $filename,
             'path' => $filename,
@@ -1457,6 +1727,12 @@ if ($r0 === 'media') {
     }
     if ($method === 'DELETE' && $n === 2) {
         $name = basename($seg[1]);
+        // Never let a caller remove the folder's own dotfiles — .htaccess is what
+        // stops uploads being executed, and .last-sweep paces the orphan sweep.
+        // basename() already blocks traversal; this blocks the folder's plumbing.
+        if ($name === '' || $name[0] === '.') {
+            fail('Not found', 404);
+        }
         $like = '%' . $name . '%';
         // Delete only files that belong to THIS workspace, or that no workspace
         // references yet (a fresh upload removed before saving). Never another
