@@ -1,0 +1,32 @@
+{
+  "outdoor": {
+    "label": "Outdoor",
+    "description": "On-street and public-space placements",
+    "variations": [
+      {"id":"hoarding","label":"Hoarding","mediums":["print","digital"]},
+      {"id":"bus_shelter","label":"Bus shelter","mediums":["print","digital"]},
+      {"id":"led_screen","label":"LED screen","mediums":["digital"]},
+      {"id":"other_outdoor","label":"Other outdoor","mediums":["print","digital"]}
+    ]
+  },
+  "indoor": {
+    "label": "Indoor",
+    "description": "In-store and venue placements",
+    "variations": [
+      {"id":"standee","label":"Standee","mediums":["print"]},
+      {"id":"poster","label":"Poster","mediums":["print"]},
+      {"id":"indoor_screen","label":"Digital screen","mediums":["digital"]},
+      {"id":"other_indoor","label":"Other indoor","mediums":["print","digital"]}
+    ]
+  },
+  "online": {
+    "label": "Online",
+    "description": "Digital channels and platforms",
+    "variations": [
+      {"id":"social","label":"Social media","mediums":["digital"]},
+      {"id":"display_ad","label":"Display ad","mediums":["digital"]},
+      {"id":"email","label":"Email","mediums":["digital"]},
+      {"id":"other_online","label":"Other online","mediums":["digital"]}
+    ]
+  }
+}

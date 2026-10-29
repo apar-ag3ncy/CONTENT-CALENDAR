@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ContentForm, type ContentFormValues } from '../components/ContentForm'
 import { Reveal } from '../components/Reveal'
@@ -49,9 +49,24 @@ export default function ComposeView() {
   const [error, setError] = useState<string | null>(null)
 
   const items = dayItemsQ.data ?? []
-  const editing = editId ? (items.find((i) => i.id === editId) ?? null) : null
+  const found = editId ? (items.find((i) => i.id === editId) ?? null) : null
+  // Hold on to the item once we've seen it. A background refetch that returns
+  // empty (or fails) would otherwise flip `editing` to null mid-edit, unmount
+  // ContentForm and throw away everything typed so far — and replace it with
+  // "That item couldn't be found" even though the item exists. Reset when the
+  // edit target changes.
+  const lastEditing = useRef<{ id: string | null; item: typeof found }>({ id: null, item: null })
+  if (editId !== lastEditing.current.id) {
+    lastEditing.current = { id: editId, item: found }
+  } else if (found) {
+    lastEditing.current.item = found
+  }
+  const editing = found ?? lastEditing.current.item
+
   const saving = createItem.isPending || updateItem.isPending
-  const loadingEdit = isEdit && dayItemsQ.isLoading
+  // `isResolving` is "no answer from the server yet" — unlike isLoading it
+  // doesn't stay true for an empty-but-successful response.
+  const loadingEdit = isEdit && !editing && dayItemsQ.isResolving
 
   function handleSubmit(values: ContentFormValues) {
     setError(null)
@@ -111,7 +126,7 @@ export default function ComposeView() {
         <div className="mt-6">
           {loadingEdit ? (
             <div className="pin-card py-10 text-center text-sm text-slate-400">Loading…</div>
-          ) : isEdit && !editing ? (
+          ) : isEdit && !editing && !dayItemsQ.isResolving ? (
             <div className="pin-card py-10 text-center">
               <p className="text-sm text-slate-500">That item couldn&rsquo;t be found.</p>
               <Link to={backTo} className="mt-3 inline-block text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300">

@@ -36,7 +36,7 @@ export const isApiConfigured = sameOrigin || API_BASE.length > 0
 /** Upload progress callback. `total === 0` means the size isn't known yet. */
 export type UploadProgressFn = (loaded: number, total: number) => void
 
-async function req<T>(path: string, init?: RequestInit): Promise<T> {
+export async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const isForm = init?.body instanceof FormData
   const token = getToken()
   const clientId = getActiveClientId()

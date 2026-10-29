@@ -41,9 +41,11 @@ echo "==> 3/5  Stage the cPanel document-root layout"
 rm -rf "$STAGE"; mkdir -p "$STAGE/api"
 # Frontend: the whole built static site (index.html, assets/, logos, favicon,
 # and the SPA-routing .htaccess) EXCEPT the demo sample photos.
-rsync -a --exclude 'photos' --exclude '.DS_Store' dist/ "$STAGE/"
-# Backend: ONLY these three files. No config.php and no data/ on purpose.
-cp api/index.php api/.htaccess api/config.sample.php "$STAGE/api/"
+rsync -a --exclude 'photos' --exclude '.DS_Store' \
+      --exclude 'ref.mov' --exclude 'ref.html' \
+      dist/ "$STAGE/"
+# Backend: only the application files below. No config.php or data/ on purpose.
+cp api/index.php api/tracker.php api/tracker-taxonomy.json api/.htaccess api/.user.ini api/config.sample.php "$STAGE/api/"
 
 echo "==> 4/5  Create $ZIP"
 rm -f "$ZIP"

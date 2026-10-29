@@ -94,6 +94,53 @@ function Photo({ src, alt = '', className = '' }: { src: string; alt?: string; c
  * Chrome's autoplay policy ignores — so we set the muted *property* via a ref.
  * A sibling poster frame (`<name>.poster.jpg`) guarantees a visible frame.
  */
+/**
+ * One IntersectionObserver for the whole page, not one per tile. Tiles register
+ * on mount and unregister on unmount; only the ones actually on screen play.
+ */
+const visibleVideos = new WeakSet<HTMLVideoElement>()
+let videoObserver: IntersectionObserver | null = null
+function observeVideo(v: HTMLVideoElement) {
+  if (typeof IntersectionObserver === 'undefined') {
+    // No IO support — fall back to the old always-play behaviour rather than
+    // leaving every reel frozen.
+    v.play().catch(() => {})
+    return
+  }
+  if (!videoObserver) {
+    videoObserver = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          const el = e.target as HTMLVideoElement
+          if (e.isIntersecting) {
+            visibleVideos.add(el)
+            el.play().catch(() => {})
+          } else {
+            visibleVideos.delete(el)
+            el.pause()
+            // Deliberately NOT clearing src: re-setting it forces a full refetch
+            // on every scroll reversal, which is worse than holding the buffer.
+          }
+        }
+      },
+      { rootMargin: '200px' },
+    )
+  }
+  videoObserver.observe(v)
+}
+
+/**
+ * A reel tile. React only sets `muted` as an attribute, which Chrome's autoplay
+ * policy ignores — so we set the muted *property* via a ref.
+ *
+ * Playback is gated on visibility. Previously every reel in the entire feed
+ * history mounted with `preload="auto"` and an unconditional `play()`, so
+ * opening the grid downloaded and decoded every video at once — the measured
+ * 46.5 MB / 10-tile payload, and enough decode pressure that on-screen reels
+ * dropped to a few frames per second. `preload="metadata"` still paints a real
+ * first frame (the `<name>.poster.jpg` convention has no generator, so the
+ * poster 404s and a `preload="none"` tile would be a black rectangle).
+ */
 function VideoThumb({ src, className = '' }: { src: string; className?: string }) {
   return (
     <video
@@ -101,15 +148,14 @@ function VideoThumb({ src, className = '' }: { src: string; className?: string }
         if (!v) return
         v.muted = true
         v.defaultMuted = true
-        v.play().catch(() => {})
+        observeVideo(v)
       }}
       src={src}
       poster={src.replace(VID_RE, '.poster.jpg')}
       muted
       loop
-      autoPlay
       playsInline
-      preload="auto"
+      preload="metadata"
       className={`h-full w-full object-cover ${className}`}
     />
   )
@@ -165,24 +211,38 @@ function byDateDesc(a: ContentItem, b: ContentItem): number {
 }
 
 // ─────────────────────────── editorial header ───────────────────────────
+/**
+ * Compact page header.
+ *
+ * This was a full editorial hero — 5xl/6xl title, py-16, a 20rem watermark —
+ * which measured 282px tall and pushed the first grid tile to y=880 on a 900px
+ * laptop (and y=920 on a 812px phone). On the one screen whose entire job is
+ * showing the grid, the client opened it and saw no grid. It keeps the brand
+ * gradient and the wordmark feel, but as a band rather than a splash: title and
+ * strapline sit side by side from sm up, so the height roughly halves.
+ */
 function EditorialHeader({ brand }: { brand: string }) {
   return (
-    <header className="editorial-hero relative isolate overflow-hidden rounded-[1.75rem] bg-forest-900 px-7 py-11 text-white sm:px-12 sm:py-16">
+    <header className="editorial-hero relative isolate overflow-hidden rounded-[1.5rem] bg-forest-900 px-5 py-5 text-white sm:px-8 sm:py-6">
       {/* Brand-colour gradient wash over a dark base: carries the active
           workspace's colour while keeping the title crisply white. */}
       <span className="pointer-events-none absolute inset-0 bg-gradient-to-br from-brand-500/70 via-brand-600/40 to-transparent" />
-      <span className="pointer-events-none absolute -right-2 -top-14 select-none font-serif text-[13rem] font-bold leading-none text-white/10 sm:-top-20 sm:text-[20rem]">
+      <span className="pointer-events-none absolute -right-3 -top-8 select-none font-serif text-[9rem] font-bold leading-none text-white/10">
         G
       </span>
-      <span className="pointer-events-none absolute inset-3 rounded-[1.4rem] ring-1 ring-white/15 sm:inset-4" />
-      <div className="relative">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.42em] text-white/75">
-          {brand} × Apar · Feed Preview
-        </p>
-        <h1 className="mt-4 font-serif text-5xl font-bold tracking-tight text-white sm:text-6xl">
-          Grid Review
-        </h1>
-        <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/85">
+      <span className="pointer-events-none absolute inset-2 rounded-[1.15rem] ring-1 ring-white/15 sm:inset-3" />
+      <div className="relative flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+        <div className="min-w-0">
+          {/* Tighter tracking on phones — at 0.32em this ran past 375px and
+              truncated to "…FEED P…". */}
+          <p className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-white/75 sm:tracking-[0.32em]">
+            {brand} × Apar · Feed Preview
+          </p>
+          <h1 className="mt-1 font-serif text-3xl font-bold tracking-tight text-white sm:text-4xl">
+            Grid Review
+          </h1>
+        </div>
+        <p className="max-w-sm text-[13px] leading-relaxed text-white/85">
           Next week’s plan sitting on top of the live feed — exactly how the profile will look once it goes up.
         </p>
       </div>
@@ -232,10 +292,18 @@ function FeedTile({
   const vid = firstVideo(item)
   const img = firstImage(item)
   const isCarousel = item.type === 'post' && item.media.length > 1
+  // A screen reader would otherwise announce every tile as a bare "button".
+  // Give each one the date, type and review state — the facts a client needs to
+  // decide which post they're approving.
+  const meta = metaFor(item)
+  const label = `${meta.label}, ${weekdayLong(item.date)} ${monthShort(item.date)} ${dayNum(
+    item.date,
+  )} — ${statusMeta(item.status).label}. Open to review.`
   return (
     <button
       type="button"
       onClick={onOpen}
+      aria-label={label}
       className={`group relative aspect-[3/4] overflow-hidden rounded-lg bg-forest-100 ${
         // No ring-offset: it would need a colour matching the panel behind it,
         // which differs between light and dark. The 2px brand ring reads
@@ -243,7 +311,7 @@ function FeedTile({
         highlight ? 'ring-2 ring-brand-500' : 'ring-1 ring-forest-100'
       }`}
     >
-      {vid ? <VideoThumb src={vid.url} /> : img ? <Photo src={img.url} /> : null}
+      {vid ? <VideoThumb src={vid.url} /> : img ? <Photo src={img.thumb ?? img.url} /> : null}
       {item.type === 'reel' || isCarousel ? (
         <span className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-forest-900/55 text-cream backdrop-blur-sm">
           {item.type === 'reel' ? reelGlyph() : carouselGlyph()}
@@ -412,14 +480,22 @@ function ProfilePreview({
     }
   }
 
+  // Profile-header counts, over everything on the grid (band + the rest of the
+  // feed). 'planned' and 'posted' use the same allowlist vocabulary as the week
+  // band, so the numbers agree with what the tiles below actually show.
+  const feed = [...band, ...rest]
+  const total = feed.length
+  const plannedCount = feed.filter((i) => i.status === 'scheduled').length
+  const postedCount = feed.filter((i) => i.status === 'posted').length
+
   return (
     <section className="overflow-hidden rounded-[1.75rem] border border-forest-100 bg-white shadow-[0_18px_40px_-28px_rgba(13,27,21,0.45)]">
-      <div className="p-6 sm:p-8">
-        <div className="flex flex-wrap items-center gap-5">
+      <div className="p-5 sm:p-6">
+        <div className="flex flex-wrap items-center gap-4 sm:gap-5">
           {/* profile photo */}
           <div className="relative rounded-full bg-gradient-to-tr from-champagne to-forest-600 p-[3px]">
             <div className="rounded-full bg-white p-[3px]">
-              <div className="grid h-20 w-20 place-items-center rounded-full bg-forest-700 font-serif text-3xl text-cream sm:h-24 sm:w-24 sm:text-4xl">
+              <div className="grid h-16 w-16 place-items-center rounded-full bg-forest-700 font-serif text-2xl text-cream sm:h-20 sm:w-20 sm:text-3xl">
                 {brand.charAt(0).toUpperCase()}
               </div>
             </div>
@@ -432,17 +508,18 @@ function ProfilePreview({
                 Brand profile
               </span>
             </div>
-            <div className="mt-3 flex max-w-xs items-center justify-between gap-2">
-              <Stat n={String(band.length + rest.length)} label="posts" />
-              <Stat n="12.4k" label="followers" />
-              <Stat n="284" label="following" />
+            {/* Real counts, not an Instagram cosplay. This used to read
+                "12.4k followers · 284 following" — invented numbers, shown to
+                the client on a page about their own brand. These three are all
+                derived from the calendar and are the ones worth knowing here.
+                No max-w-xs: at 375px that clipped the third stat mid-word. */}
+            <div className="mt-2.5 flex flex-wrap items-center gap-x-6 gap-y-1">
+              <Stat n={String(total)} label="posts" />
+              <Stat n={String(plannedCount)} label="planned" />
+              <Stat n={String(postedCount)} label="posted" />
             </div>
           </div>
         </div>
-        <p className="mt-4 max-w-md text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">
-          <span className="font-semibold text-neutral-900 dark:text-neutral-100">Fine jewellery, handcrafted.</span>{' '}
-          ✦ Bridal & statement edits. New collection live now.
-        </p>
       </div>
 
       <div className="border-t border-forest-100 px-2 pb-2 pt-2 sm:px-3 sm:pb-3">

@@ -4,7 +4,7 @@ import { FinalizeBar } from '../components/FinalizeBar'
 import { DayContent } from '../components/DayContent'
 import { selectedDateFor } from '../components/MonthIndex'
 import { useCalendarRange } from '../hooks/useCalendarData'
-import { isApiConfigured } from '../lib/api'
+import { useCanEdit } from '../lib/auth'
 import {
   addMonths,
   endOfMonth,
@@ -19,6 +19,7 @@ import {
 // page just shows the selected day's content (driven by the ?d= URL param) in
 // the full-width centre, so uploaded posts/reels have room to look good.
 export default function MonthView() {
+  const canEdit = useCanEdit()
   const { month } = useParams()
   const [searchParams] = useSearchParams()
   const now = new Date()
@@ -62,7 +63,7 @@ export default function MonthView() {
         startISO={monthStartISO}
         endISO={monthEndISO}
         locks={locks}
-        canEdit={isApiConfigured}
+        canEdit={canEdit}
       />
 
       <DayContent dateISO={selected} />

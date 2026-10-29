@@ -50,6 +50,20 @@ export function applyBrandTheme(colors: Partial<BrandColors> | null | undefined)
     else root.style.removeProperty(`--brand-${shade}`)
   }
 
+  // Primary controls keep white text. Darken a custom accent until its whole
+  // gradient is readable, instead of assuming every client chooses a dark hue.
+  const accent = r?.[500]
+  if (accent) {
+    const luminance = (rgb: number[]) => rgb.map(v => { v /= 255; return v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4 }).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0)
+    let safe = accent
+    for(let t=0; 1.05/(luminance(safe)+.05)<4.6 && t<1; t+=.02) safe=toward(accent,0,t)
+    root.style.setProperty('--action-start', safe.join(' '))
+    root.style.setProperty('--action-end', toward(safe,0,.18).join(' '))
+  } else {
+    root.style.removeProperty('--action-start')
+    root.style.removeProperty('--action-end')
+  }
+
   if (colors?.text_color) root.style.setProperty('--app-heading', colors.text_color)
   else root.style.removeProperty('--app-heading')
 

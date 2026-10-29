@@ -1,3 +1,4 @@
+import { UiIcon } from './UiIcon'
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ScrollTrigger } from '../lib/motion'
@@ -181,7 +182,7 @@ function CalendarNav({
 
   if (collapsed) {
     return (
-      <nav aria-label="Months" className="flex flex-col items-center gap-1">
+      <nav aria-label="Months" className="calendar-index cal-month-rail flex flex-col items-center gap-1">
         {Array.from({ length: 12 }, (_, m) => {
           const key = `${year}-${pad2(m + 1)}`
           const active = onMonthRoute && m === month0
@@ -193,7 +194,8 @@ function CalendarNav({
               to={`/month/${key}`}
               onClick={onNavigate}
               title={label}
-              className={`grid h-9 w-12 place-items-center rounded-lg text-xs font-semibold transition ${
+              aria-current={active ? 'date' : undefined}
+              className={`cal-month grid h-11 w-12 place-items-center rounded-lg text-xs font-semibold transition ${
                 active ? 'bg-brand-600 text-white' : current ? 'text-brand-700 hover:bg-brand-50' : 'text-gray-500 hover:bg-gray-100'
               }`}
             >
@@ -206,14 +208,14 @@ function CalendarNav({
   }
 
   return (
-    <div className="space-y-5">
+    <div className="calendar-index space-y-5">
       {/* ── Month picker — active month on top; list pops only to switch ── */}
       <div>
         <button
           type="button"
           onClick={() => setMenuOpen((o) => !o)}
           aria-expanded={menuOpen}
-          className="flex w-full items-center justify-between rounded-xl bg-brand-600 px-3.5 py-2.5 text-left text-white shadow-[0_8px_20px_-10px_rgba(214,46,20,0.7)] transition hover:bg-brand-700"
+          className="cal-picker"
         >
           <span className="text-sm font-bold">
             {monthLong} {year}
@@ -234,12 +236,12 @@ function CalendarNav({
         {menuOpen ? (
           <div className="mt-2 rounded-xl border border-gray-200 bg-white p-2 shadow-sm">
             <div className="mb-1.5 flex items-center justify-between px-1">
-              <button type="button" aria-label="Previous year" onClick={() => setPickYear((y) => y - 1)} className="grid h-7 w-7 place-items-center rounded-lg text-gray-500 hover:bg-gray-100">
-                ‹
+              <button type="button" aria-label="Previous year" onClick={() => setPickYear((y) => y - 1)} className="cal-year-arrow">
+                <UiIcon name="chevron-left"/>
               </button>
               <span className="text-sm font-bold text-gray-900">{pickYear}</span>
-              <button type="button" aria-label="Next year" onClick={() => setPickYear((y) => y + 1)} className="grid h-7 w-7 place-items-center rounded-lg text-gray-500 hover:bg-gray-100">
-                ›
+              <button type="button" aria-label="Next year" onClick={() => setPickYear((y) => y + 1)} className="cal-year-arrow">
+                <UiIcon name="chevron-right"/>
               </button>
             </div>
             <div className="grid grid-cols-3 gap-1">
@@ -256,7 +258,8 @@ function CalendarNav({
                       setMenuOpen(false)
                       onNavigate?.()
                     }}
-                    className={`rounded-lg py-1.5 text-center text-xs font-semibold transition ${
+                    aria-current={active ? 'date' : undefined}
+                    className={`cal-month rounded-lg py-1.5 text-center text-xs font-semibold transition ${
                       active ? 'bg-brand-600 text-white' : current ? 'bg-brand-50 text-brand-700' : 'text-gray-600 hover:bg-gray-100'
                     }`}
                   >
@@ -294,7 +297,7 @@ function CalendarNav({
           type="button"
           onClick={() => setWeeksOpen((o) => !o)}
           aria-expanded={weeksOpen}
-          className="flex w-full items-center justify-between rounded-xl bg-brand-600 px-3.5 py-2.5 text-left text-white shadow-[0_8px_20px_-10px_rgba(214,46,20,0.7)] transition hover:bg-brand-700"
+          className="cal-picker"
         >
           <span className="flex items-baseline gap-2">
             <span className="text-sm font-bold">Week {activeWeek.n}</span>
@@ -316,7 +319,7 @@ function CalendarNav({
         </button>
 
         {weeksOpen ? (
-          <nav aria-label="Weeks" className="mt-2 flex flex-col gap-1 rounded-xl border border-gray-200 bg-white p-2 shadow-sm">
+          <nav aria-label="Weeks" className="cal-week-list mt-2 flex flex-col gap-1 rounded-xl border border-gray-200 bg-white p-2 shadow-sm">
             {weeks.map((w, i) => {
               const active = i === activeWeekIdx
               const firstISO = toISODate(new Date(year, month0, w.start))
@@ -372,11 +375,11 @@ function CalendarNav({
                     ? `inset 0 0 0 2px ${s.color}, 0 10px 22px -6px rgba(92, 20, 16, 0.55)`
                     : '0 4px 10px -5px rgba(99, 29, 16, 0.4)',
                 }}
-                className={`relative flex items-center gap-2.5 rounded-2xl px-4 py-3 transition-transform ${
-                  active ? 'scale-[1.03] font-extrabold' : 'hover:translate-x-0.5'
+                className={`cal-day relative flex items-center gap-2.5 rounded-2xl px-4 py-3 transition-transform ${
+                  active ? 'font-extrabold' : ''
                 }`}
               >
-                <span className="w-9 flex-none text-[10px] font-bold uppercase tracking-wide opacity-70">
+                <span className="w-9 flex-none text-[10px] font-bold uppercase tracking-wide">
                   {WEEKDAY_SHORT[weekdayMonFirst(date)]}
                 </span>
                 <span className="tabular-nums text-sm font-bold">{date.getDate()}</span>
@@ -403,16 +406,36 @@ function brandRgb(name: string, fallback: [number, number, number]): [number, nu
     ? (parts as [number, number, number])
     : fallback
 }
+/** WCAG relative luminance of an sRGB triple. */
+function relLum([r, g, b]: number[]): number {
+  const f = (v: number) => {
+    v /= 255
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
+  }
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
+}
+function contrast(a: number[], b: number[]): number {
+  const la = relLum(a) + 0.05
+  const lb = relLum(b) + 0.05
+  return la > lb ? la / lb : lb / la
+}
+
 function dayPillStyle(t: number): { backgroundColor: string; color: string } {
   const top = brandRgb('--brand-500', [0xee, 0x3a, 0x24]) // brand accent at the top
   const bot = brandRgb('--brand-100', [0xfd, 0xe3, 0xd6]) // light brand tint at the bottom
   const r = Math.round(top[0] + (bot[0] - top[0]) * t)
   const g = Math.round(top[1] + (bot[1] - top[1]) * t)
   const b = Math.round(top[2] + (bot[2] - top[2]) * t)
-  const lum = 0.299 * r + 0.587 * g + 0.114 * b
+  const bg = [r, g, b]
+  // Pick whichever text colour has the HIGHER contrast against this pill, rather
+  // than flipping on a naive luminance threshold — the old cutoff left white
+  // text on the mid-ramp reds at ~2.9:1 and on the brand-500 top pill at 3.99:1.
+  // Pick black or white for the stronger contrast on each day's tint.
+  const white = [255, 255, 255]
+  const darkRed = [0, 0, 0]
   return {
     backgroundColor: `rgb(${r}, ${g}, ${b})`,
-    color: lum > 165 ? '#7a1c0e' : '#ffffff',
+    color: contrast(bg, white) >= contrast(bg, darkRed) ? '#ffffff' : '#000000',
   }
 }
 
@@ -705,6 +728,7 @@ function TopHeader({
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const isTeam = useIsTeam()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
   const drawerRef = useDialog(drawerOpen, () => setDrawerOpen(false))
@@ -784,6 +808,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className={`flex-1 overflow-y-auto py-5 ${collapsed ? 'px-2' : 'px-4'}`}>
           <div className={collapsed ? 'mb-4' : 'mb-5'}>
             <GridReviewLink collapsed={collapsed} />
+            {isTeam && <Link to="/media-tracker" title="Media Tracker" className="media-tracker-nav" aria-label="Media Tracker"><UiIcon name="layers"/>{!collapsed && <span>Media Tracker</span>}</Link>}
           </div>
           <CalendarNav collapsed={collapsed} />
         </div>
@@ -809,12 +834,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                 aria-label="Close menu"
                 className="grid h-9 w-9 place-items-center rounded-lg text-xl text-gray-500 hover:bg-gray-100"
               >
-                ✕
+                <UiIcon name="close"/>
               </button>
             </div>
             <div className="flex-1 overflow-y-auto px-4 py-5">
               <div className="mb-5">
                 <GridReviewLink onNavigate={() => setDrawerOpen(false)} />
+                {isTeam && <Link to="/media-tracker" onClick={() => setDrawerOpen(false)} className="media-tracker-nav"><UiIcon name="layers"/><span>Media Tracker</span></Link>}
               </div>
               <CalendarNav onNavigate={() => setDrawerOpen(false)} />
             </div>

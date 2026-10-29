@@ -9,6 +9,7 @@ export function Modal({
   accent,
   icon,
   children,
+  wide = false,
 }: {
   open: boolean
   onClose: () => void
@@ -16,6 +17,7 @@ export function Modal({
   subtitle?: string
   accent?: boolean
   icon?: ReactNode
+  wide?: boolean
   children: ReactNode
 }) {
   const panelRef = useDialog(open, onClose)
@@ -40,7 +42,7 @@ export function Modal({
       <div
         ref={panelRef}
         tabIndex={-1}
-        className="relative z-10 flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl outline-none sm:rounded-2xl"
+        className={`app-dialog relative z-10 flex max-h-[92vh] w-full ${wide ? 'max-w-2xl' : 'max-w-lg'} flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl outline-none sm:rounded-2xl`}
       >
         {accent ? (
           <div className="h-1 w-full flex-none bg-brand-600" aria-hidden />
@@ -73,7 +75,7 @@ export function Modal({
             type="button"
             onClick={() => onCloseRef.current()}
             aria-label="Close"
-            className="grid h-9 w-9 flex-none place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+            className="dialog-close grid h-11 w-11 flex-none place-items-center rounded-lg transition"
           >
             <svg
               viewBox="0 0 24 24"

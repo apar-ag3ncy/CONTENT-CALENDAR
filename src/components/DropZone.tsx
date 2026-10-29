@@ -153,8 +153,14 @@ export function DropZone({
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Upload failed. Please try again.'
-      if (mountedRef.current) setError(msg)
-      toast.error('Couldn’t add — try again', msg)
+      // Both the inline error and the toast belong inside the mounted guard.
+      // The success toast is already guarded; leaving the error one outside
+      // meant abandoning the composer mid-upload popped "Couldn't add" on
+      // whatever unrelated page the user had navigated to.
+      if (mountedRef.current) {
+        setError(msg)
+        toast.error('Couldn’t add — try again', msg)
+      }
     } finally {
       if (mountedRef.current) {
         setBusy(false)
@@ -191,7 +197,10 @@ export function DropZone({
             return (
               <div
                 key={item.path}
-                className={`flex items-center gap-3 rounded-xl border border-white/70 bg-white/60 p-2 shadow-[0_1px_2px_rgba(16,24,40,0.04)] backdrop-blur dark:border-white/10 dark:bg-white/10 ${
+                // Dark-surface styling, no `dark:` variants — see the note on
+                // the drop target below: this always sits on .compose-canvas,
+                // which is dark in both themes.
+                className={`flex items-center gap-3 rounded-xl border border-white/15 bg-white/[0.07] p-2 backdrop-blur ${
                   multiple ? 'w-full max-w-xs' : ''
                 }`}
               >
@@ -202,19 +211,19 @@ export function DropZone({
                     className="h-14 w-14 flex-none rounded-lg object-cover"
                   />
                 ) : (
-                  <div className="grid h-14 w-14 flex-none place-items-center rounded-lg bg-white/70 text-flame-500">
+                  <div className="grid h-14 w-14 flex-none place-items-center rounded-lg bg-white/10 text-flame-300">
                     <IconFilm />
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-slate-800">
+                  <p className="truncate text-sm font-semibold text-white/90">
                     {item.name}
                   </p>
                   <a
                     href={item.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs font-semibold text-brand-700 hover:underline"
+                    className="text-xs font-semibold text-flame-300 hover:underline"
                   >
                     Open file
                   </a>
@@ -223,7 +232,7 @@ export function DropZone({
                   type="button"
                   onClick={() => void remove(item)}
                   aria-label={`Remove ${item.name}`}
-                  className="grid h-8 w-8 flex-none place-items-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                  className="grid h-8 w-8 flex-none place-items-center rounded-lg text-white/50 transition hover:bg-red-500/20 hover:text-red-300"
                 >
                   <IconX />
                 </button>
@@ -251,25 +260,32 @@ export function DropZone({
         className={`flex w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed px-4 text-center backdrop-blur transition ${
           tall ? 'py-16 sm:py-20' : 'py-8'
         } ${
+          // Styled for a DARK surface unconditionally — no `dark:` variants.
+          // This zone only ever renders inside .compose-canvas (DropZone →
+          // ContentForm → ComposeView), and that canvas is a deep orange
+          // gradient in BOTH themes (see index.css: ".grainient,
+          // .compose-canvas already render dark; no override needed").
+          // The old bg-white/45 therefore sat on it as a washed-out grey slab
+          // in light mode and dark mode alike.
           dragOver
-            ? 'border-brand-400 bg-brand-50/70'
-            : 'border-flame-200/70 bg-white/45 hover:border-brand-300 hover:bg-flame-50/50'
+            ? 'border-brand-300 bg-brand-500/20'
+            : 'border-white/20 bg-white/[0.06] hover:border-brand-300/60 hover:bg-white/15'
         } disabled:cursor-not-allowed disabled:opacity-60`}
       >
         <span
           className={`grid h-11 w-11 place-items-center rounded-full shadow-sm ring-1 transition ${
             dragOver
-              ? 'bg-brand-100 text-brand-600 ring-brand-100'
-              : 'bg-white/80 text-flame-500 ring-white/70'
+              ? 'bg-brand-500/25 text-brand-100 ring-brand-300/40'
+              : 'bg-white/10 text-flame-300 ring-white/15'
           }`}
           aria-hidden
         >
           <IconUpload />
         </span>
-        <span className="text-sm font-semibold text-slate-700">
+        <span className="text-sm font-semibold text-white/85">
           {uploading ? 'Uploading…' : 'Drop files or browse'}
         </span>
-        <span className="text-xs text-slate-400">
+        <span className="text-xs text-white/50">
           {isApiConfigured
             ? multiple
               ? 'Photos or videos — add as many as you like'
@@ -289,7 +305,7 @@ export function DropZone({
           e.target.value = ''
         }}
       />
-      {error ? <p className="mt-1 text-xs text-red-600">{error}</p> : null}
+      {error ? <p className="mt-1 text-xs text-red-300">{error}</p> : null}
     </div>
   )
 }

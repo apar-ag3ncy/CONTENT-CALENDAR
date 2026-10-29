@@ -14,7 +14,7 @@ export default defineConfig({
     //   php -S 127.0.0.1:8080 -t . api/router-dev.php
     proxy: {
       '/api': 'http://127.0.0.1:8080',
-      '/media': 'http://127.0.0.1:8080',
+      '^/media(?:/|$)': 'http://127.0.0.1:8080',
     },
   },
 })

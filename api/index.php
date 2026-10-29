@@ -536,6 +536,9 @@ function require_client_scope(array $ctx): string
 }
 
 $db = pdo();
+require_once __DIR__ . '/tracker.php';
+tracker_schema($db);
+if ($r0 === 'tracker') tracker_routes($db, $seg, $method);
 
 // ═══════════════════════════ HEALTH ═══════════════════════════ (public)
 if ($r0 === 'health') {
@@ -545,6 +548,21 @@ if ($r0 === 'health') {
         'engine'  => 'sqlite',
         'crypto'  => function_exists('openssl_encrypt') ? 'openssl' : 'plaintext',
         'hasAdmin' => (bool) $db->query("SELECT 1 FROM team_users LIMIT 1")->fetchColumn(),
+        // The EFFECTIVE upload limits, so "why did my upload fail?" can be
+        // answered from a browser instead of a cPanel login. `.htaccess`
+        // php_value only applies under mod_php and api/.user.ini only under
+        // PHP-FPM/CGI — this reports whichever actually won.
+        'php'     => PHP_VERSION,
+        'sapi'    => PHP_SAPI,
+        // gd drives the grid-tile thumbnails; without it the grid falls back to
+        // full-size masters and gets slow on phones.
+        'thumbnails' => extension_loaded('gd') ? 'gd' : 'unavailable',
+        'limits'  => [
+            'upload_max_filesize' => ini_get('upload_max_filesize'),
+            'post_max_size'       => ini_get('post_max_size'),
+            'memory_limit'        => ini_get('memory_limit'),
+            'max_execution_time'  => ini_get('max_execution_time'),
+        ],
     ]);
 }
 
@@ -767,7 +785,7 @@ if ($r0 === 'clients') {
             }
             $db->beginTransaction();
             foreach (['content_items', 'categories', 'special_days', 'period_locks',
-                      'team_members', 'app_info', 'content_comments', 'day_notes', 'day_comments'] as $t) {
+                      'team_members', 'app_info', 'content_comments', 'day_notes', 'day_comments', 'tracker_records', 'tracker_uploads'] as $t) {
                 $db->prepare("DELETE FROM $t WHERE client_id = ?")->execute([$id]);
             }
             $db->prepare("DELETE FROM sessions WHERE user_kind = 'client' AND client_id = ?")->execute([$id]);
@@ -1064,11 +1082,20 @@ function sweep_orphan_media(PDO $db, string $dir): void
     // Every filename any item still points at, across all workspaces.
     $referenced = [];
     try {
-        foreach ($db->query("SELECT media FROM content_items WHERE media IS NOT NULL AND media != ''") as $r) {
+        foreach ($db->query("SELECT media FROM content_items WHERE media IS NOT NULL AND media != '' UNION ALL SELECT json_extract(data, '$.media') AS media FROM tracker_records WHERE kind='jobs'") as $r) {
             foreach (json_decode((string) $r['media'], true) ?: [] as $m) {
-                $p = is_string($m) ? $m : ($m['path'] ?? ($m['url'] ?? ''));
-                if ($p !== '') {
-                    $referenced[basename((string) $p)] = true;
+                if (is_string($m)) {
+                    $referenced[basename($m)] = true;
+                    continue;
+                }
+                // The master AND its web-sized derivative both count as
+                // referenced — without the 'thumb' line the sweep would reap
+                // every preview 24h after it was generated, silently putting
+                // the grid back on the multi-megapixel originals.
+                foreach (['path', 'url', 'thumb'] as $k) {
+                    if (!empty($m[$k])) {
+                        $referenced[basename((string) $m[$k])] = true;
+                    }
                 }
             }
         }
@@ -1094,11 +1121,86 @@ function sweep_orphan_media(PDO $db, string $dir): void
     }
 }
 
+/**
+ * Make a web-sized copy of an uploaded image for GRID TILES.
+ *
+ * The client shoots at 8192x5464 / ~28 MB. A dozen of those is ~305 MB over the
+ * wire and ~2 GB once decoded — past what a phone will hand Safari, so the grid
+ * crawled or images silently dropped out. A 1920px long-edge copy is ~0.4 MB and
+ * still 2.6 MP, far more than a ~375px tile needs.
+ *
+ * The ORIGINAL is never touched: it stays the download and the modal image.
+ * Returns the thumb filename, or null when it couldn't/needn't be made (no gd,
+ * unsupported type, or the source is already small) — callers must treat the
+ * thumb as optional and fall back to the master.
+ */
+function make_thumbnail(string $dir, string $filename, int $maxEdge = 1920, int $quality = 88): ?string
+{
+    if (!extension_loaded('gd')) {
+        return null; // host without gd — grid falls back to the master
+    }
+    $src = $dir . '/' . $filename;
+    $info = @getimagesize($src);
+    if ($info === false) {
+        return null;
+    }
+    [$w, $h, $type] = $info;
+    if ($w <= $maxEdge && $h <= $maxEdge) {
+        return null; // already small enough to serve as-is
+    }
+    // A 45 MP source needs ~171 MB decoded. Bail out rather than OOM the request.
+    $needed = $w * $h * 4 + 32 * 1024 * 1024;
+    $limit = memory_limit_bytes();
+    if ($limit > 0 && $needed > $limit) {
+        return null;
+    }
+    switch ($type) {
+        case IMAGETYPE_JPEG: $im = @imagecreatefromjpeg($src); break;
+        case IMAGETYPE_PNG:  $im = @imagecreatefrompng($src);  break;
+        case IMAGETYPE_WEBP: $im = function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($src) : false; break;
+        default: return null;
+    }
+    if (!$im) {
+        return null;
+    }
+    $scale = $maxEdge / max($w, $h);
+    $tw = max(1, (int) round($w * $scale));
+    $th = max(1, (int) round($h * $scale));
+    // imagecopyresampled, not imagescale: imagescale() returns false on very
+    // large sources (it fails outright on these 45 MP frames), while
+    // imagecopyresampled handles them and gives the better interpolation.
+    $out = @imagecreatetruecolor($tw, $th);
+    if (!$out) {
+        return null;
+    }
+    if (!@imagecopyresampled($out, $im, 0, 0, 0, 0, $tw, $th, $w, $h)) {
+        return null;
+    }
+    $thumbName = preg_replace('/\.[^.]+$/', '', $filename) . '.thumb.jpg';
+    $ok = @imagejpeg($out, $dir . '/' . $thumbName, $quality);
+    return $ok ? $thumbName : null;
+}
+
+/** memory_limit as bytes; 0 when unlimited. */
+function memory_limit_bytes(): int
+{
+    $v = trim((string) ini_get('memory_limit'));
+    if ($v === '' || $v === '-1') {
+        return 0;
+    }
+    $unit = strtolower(substr($v, -1));
+    $n = (int) $v;
+    return match ($unit) { 'g' => $n * 1024 ** 3, 'm' => $n * 1024 ** 2, 'k' => $n * 1024, default => $n };
+}
+
 function delete_media_files(array $paths): void
 {
     global $MEDIA_DIR;
     foreach ($paths as $p) {
         if (is_string($p) && $p !== '') {
+            $q = pdo()->prepare('SELECT 1 FROM tracker_records WHERE data LIKE ? LIMIT 1');
+            $q->execute(['%'.basename($p).'%']);
+            if ($q->fetchColumn()) continue;
             $file = $MEDIA_DIR . '/' . basename($p);
             if (is_file($file)) {
                 @unlink($file);
@@ -1672,10 +1774,32 @@ if ($r0 === 'media') {
         }
         $f = $_FILES['file'];
         if ($f['error'] !== UPLOAD_ERR_OK) {
-            if (in_array($f['error'], [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)) {
-                fail('File is larger than the server upload limit. Raise upload_max_filesize / post_max_size (see DEPLOY-CPANEL.md).', 413);
+            // Every PHP upload error used to collapse to "Upload failed
+            // (error 7)" — a bare number nobody can act on. Each of these has a
+            // different cause and a different fix, so say which.
+            switch ($f['error']) {
+                case UPLOAD_ERR_INI_SIZE:
+                case UPLOAD_ERR_FORM_SIZE:
+                    fail(
+                        'File is larger than this server allows (limit is '
+                        . ini_get('upload_max_filesize') . '). Raise upload_max_filesize'
+                        . ' and post_max_size — see DEPLOY-CPANEL.md, "Large video uploads".',
+                        413
+                    );
+                    // no break — fail() exits
+                case UPLOAD_ERR_PARTIAL:
+                    fail('The upload was cut off before it finished. Check the connection and try again.', 400);
+                case UPLOAD_ERR_NO_FILE:
+                    fail('No file was selected.', 400);
+                case UPLOAD_ERR_NO_TMP_DIR:
+                    fail('The server has no temp folder for uploads (upload_tmp_dir is missing or unwritable). This needs fixing on the host.', 500);
+                case UPLOAD_ERR_CANT_WRITE:
+                    fail('The server ran out of disk space (or the media folder isn’t writable), so the file couldn’t be saved. Free up space on the hosting account and try again.', 507);
+                case UPLOAD_ERR_EXTENSION:
+                    fail('A PHP extension blocked this upload. This needs fixing on the host.', 500);
+                default:
+                    fail('Upload failed (PHP error code ' . $f['error'] . ').', 400);
             }
-            fail('Upload failed (error ' . $f['error'] . ')');
         }
         if (!is_dir($MEDIA_DIR) && !@mkdir($MEDIA_DIR, 0755, true) && !is_dir($MEDIA_DIR)) {
             fail('Could not create media folder on the server', 500);
@@ -1716,14 +1840,23 @@ if ($r0 === 'media') {
         if (!move_uploaded_file($f['tmp_name'], $MEDIA_DIR . '/' . $filename)) {
             fail('Could not save the uploaded file', 500);
         }
+        // Web-sized copy for grid tiles. Optional by design: a host without gd
+        // just gets null and the grid falls back to the original.
+        $thumbName = make_thumbnail($MEDIA_DIR, $filename);
+
         // Opportunistic housekeeping — self-rate-limited to once every 6h.
         sweep_orphan_media($db, $MEDIA_DIR);
 
-        send_json([
+        $payload = [
             'url'  => $MEDIA_URL . '/' . $filename,
             'path' => $filename,
             'name' => $f['name'],
-        ], 201);
+        ];
+        if ($thumbName !== null) {
+            $payload['thumb'] = $MEDIA_URL . '/' . $thumbName;
+        }
+        $db->prepare('INSERT OR REPLACE INTO tracker_uploads(path,client_id) VALUES(?,?)')->execute([$filename,$clientId]);
+        send_json($payload, 201);
     }
     if ($method === 'DELETE' && $n === 2) {
         $name = basename($seg[1]);
@@ -1733,6 +1866,9 @@ if ($r0 === 'media') {
         if ($name === '' || $name[0] === '.') {
             fail('Not found', 404);
         }
+        $trackerRef = $db->prepare('SELECT 1 FROM tracker_records WHERE data LIKE ? LIMIT 1');
+        $trackerRef->execute(['%'.$name.'%']);
+        if ($trackerRef->fetchColumn()) no_content(); // Saved tracker attachments must survive form removals until the record is saved.
         $like = '%' . $name . '%';
         // Delete only files that belong to THIS workspace, or that no workspace
         // references yet (a fresh upload removed before saving). Never another

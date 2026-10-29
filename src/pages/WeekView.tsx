@@ -3,7 +3,7 @@ import { CalendarToolbar } from '../components/CalendarToolbar'
 import { LockPill } from '../components/LockIndicators'
 import { FinalizeBar } from '../components/FinalizeBar'
 import { StatusChip, TypeChip } from '../components/ContentBadges'
-import { isApiConfigured } from '../lib/api'
+import { useCanEdit } from '../lib/auth'
 import { useCalendarRange } from '../hooks/useCalendarData'
 import { groupByDate, isDateLocked, specialDayMap } from '../lib/calendar'
 import {
@@ -26,12 +26,16 @@ function WeekDayColumn({
   items,
   special,
   locked,
+  canEdit,
 }: {
   date: Date
   today: boolean
   items: ContentItem[]
   special: SpecialDay | undefined
   locked: boolean
+  /** Review-only clients get no "+ Add" — it lands them on a page with no
+   *  add controls, and the backend refuses the write anyway. */
+  canEdit: boolean
 }) {
   const iso = toISODate(date)
   const dow = weekdayMonFirst(date)
@@ -88,7 +92,7 @@ function WeekDayColumn({
           ))
         )}
 
-        {!locked ? (
+        {!locked && canEdit ? (
           <Link
             to={`/day/${iso}?add=1`}
             className="mt-auto inline-flex items-center justify-center gap-1 rounded-lg border border-dashed border-brand-300 px-2 py-2 text-sm font-semibold text-brand-700 transition hover:bg-brand-50"
@@ -102,6 +106,7 @@ function WeekDayColumn({
 }
 
 export default function WeekView() {
+  const canEdit = useCanEdit()
   const { weekStart } = useParams()
   const now = new Date()
   const valid = isValidISODate(weekStart)
@@ -144,10 +149,10 @@ export default function WeekView() {
         startISO={startISO}
         endISO={endISO}
         locks={locks}
-        canEdit={isApiConfigured}
+        canEdit={canEdit}
       />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-7">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-7">
         {days.map((date) => {
           const iso = toISODate(date)
           return (
@@ -158,6 +163,7 @@ export default function WeekView() {
               items={byDate.get(iso) ?? []}
               special={specials.get(iso)}
               locked={isDateLocked(iso, locks)}
+              canEdit={canEdit}
             />
           )
         })}

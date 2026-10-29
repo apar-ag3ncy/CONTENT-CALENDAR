@@ -25,9 +25,9 @@ function IconClose() {
 }
 
 const KIND: Record<ToastKind, { ring: string; chip: string; icon: () => JSX.Element }> = {
-  success: { ring: 'ring-emerald-200', chip: 'bg-emerald-500 text-white', icon: IconCheck },
-  error: { ring: 'ring-red-200', chip: 'bg-red-500 text-white', icon: IconAlert },
-  info: { ring: 'ring-brand-200', chip: 'bg-brand-500 text-white', icon: IconAlert },
+  success: { ring: 'ring-emerald-200 dark:ring-emerald-500/25', chip: 'bg-emerald-500 text-white', icon: IconCheck },
+  error: { ring: 'ring-red-200 dark:ring-red-500/25', chip: 'bg-red-500 text-white', icon: IconAlert },
+  info: { ring: 'ring-brand-200 dark:ring-brand-500/25', chip: 'bg-brand-500 text-white', icon: IconAlert },
 }
 
 function ToastCard({ item }: { item: ToastItem }) {
@@ -37,7 +37,7 @@ function ToastCard({ item }: { item: ToastItem }) {
     <div
       role="status"
       aria-live="polite"
-      className={`toast-in pointer-events-auto flex items-start gap-3 rounded-2xl border border-white/70 bg-white/95 px-3.5 py-3 shadow-[0_18px_40px_-18px_rgba(16,24,40,0.45)] ring-1 backdrop-blur ${meta.ring}`}
+      className={`toast-in pointer-events-auto flex items-start gap-3 rounded-2xl border border-white/70 bg-white/95 px-3.5 py-3 shadow-[0_18px_40px_-18px_rgba(16,24,40,0.45)] ring-1 backdrop-blur dark:border-white/10 dark:bg-[#241d17]/95 ${meta.ring}`}
     >
       <span className={`mt-0.5 grid h-6 w-6 flex-none place-items-center rounded-full ${meta.chip}`}>
         <Icon />

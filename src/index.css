@@ -68,8 +68,22 @@ html[data-themed] .editorial-hero h1 {
   a:focus-visible,
   button:focus-visible,
   [role='button']:focus-visible,
-  [tabindex]:focus-visible {
+  [tabindex]:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
     @apply outline-none ring-2 ring-brand-400 ring-offset-1;
+  }
+  /* Focus ring offset must match the surface it sits on, or it shows a white
+     halo in dark mode. */
+  .dark a:focus-visible,
+  .dark button:focus-visible,
+  .dark [role='button']:focus-visible,
+  .dark [tabindex]:focus-visible,
+  .dark input:focus-visible,
+  .dark textarea:focus-visible,
+  .dark select:focus-visible {
+    --tw-ring-offset-color: #1c1611;
   }
 }
 
@@ -507,6 +521,26 @@ html[data-themed] .editorial-hero h1 {
 .dark .bg-forest-50, .dark .bg-forest-100 { background-color: #322a22; }
 .dark .bg-cream\/40 { background-color: rgba(255, 255, 255, 0.04); }
 
+/* Hover backgrounds — the global shim above matches only BARE utility classes,
+   so `hover:bg-*` escaped it entirely and flashed a near-white block on hover in
+   dark mode. Tailwind emits these as `.hover\:bg-x:hover`, so mirror them.
+   Low-opacity white hovers (hover:bg-white/5..30) are intentionally left alone:
+   a faint white overlay is the correct hover on a dark surface. */
+.dark .hover\:bg-white:hover { background-color: #3a2f26; }
+.dark .hover\:bg-white\/70:hover,
+.dark .hover\:bg-white\/80:hover { background-color: rgba(255, 255, 255, 0.10); }
+.dark .hover\:bg-slate-50:hover,
+.dark .hover\:bg-gray-50:hover { background-color: #262019; }
+.dark .hover\:bg-slate-100:hover,
+.dark .hover\:bg-gray-100:hover { background-color: #362e26; }
+.dark .hover\:bg-brand-50:hover,
+.dark .hover\:bg-brand-50\/40:hover { background-color: rgba(238, 58, 36, 0.16); }
+.dark .hover\:bg-flame-50\/60:hover { background-color: rgba(248, 127, 35, 0.14); }
+.dark .hover\:bg-forest-50:hover { background-color: #322a22; }
+.dark .hover\:bg-red-50:hover { background-color: rgba(220, 38, 38, 0.18); }
+.dark .hover\:bg-emerald-50:hover { background-color: rgba(16, 185, 129, 0.16); }
+.dark .hover\:bg-amber-50:hover { background-color: rgba(245, 158, 11, 0.16); }
+
 /* Borders + rings */
 .dark .border-slate-200, .dark .border-gray-200 { border-color: #423830; }
 .dark .border-slate-100, .dark .border-gray-100 { border-color: #362e27; }
@@ -531,6 +565,23 @@ html[data-themed] .editorial-hero h1 {
 }
 .dark input::placeholder,
 .dark textarea::placeholder { color: #7d7264; }
+
+/* Form fields on the composer. The compose canvas is a dark orange gradient in
+   BOTH themes, yet the fields carry `bg-white` (the shared inputCls): in dark
+   mode `.dark .bg-white` repaints them the card colour (invisible), and in light
+   mode they stay white (a glaring slab on the dark canvas). Scope to the canvas,
+   not the theme, and recess them below the surface so they read as inputs
+   whichever theme is active. `:is()` lifts specificity above the `.dark .bg-white`
+   shim. */
+.compose-canvas .bg-white:is(input, textarea, select),
+.dark .compose-canvas .bg-white:is(input, textarea, select) {
+  background-color: #17110c;
+  border-color: #4a3f34;
+  color: #ece5dd;
+}
+.compose-canvas .bg-white:is(input, textarea, select)::placeholder {
+  color: #8a8075;
+}
 .dark .disabled\:bg-slate-50:disabled { background-color: #1d1713; }
 
 /* "Add something" glass cards: in dark, a clean warm-dark surface with readable
@@ -628,3 +679,53 @@ html[data-themed] .editorial-hero h1 {
   0%   { left: -38%; }
   100% { left: 100%; }
 }
+
+/* Accessible control surfaces: explicit colour pairs instead of inherited
+   utility colours, shared by calendar navigation and the tracker entry. */
+:root { --action-start: 166 49 27; --action-end: 133 39 21; --ui-surface:#fffdfb; --ui-soft:#f5eee8; --ui-text:#322b27; --ui-muted:#6c6056; --ui-line:#a99b90; --ui-accent:#98331b; color-scheme:light; }
+html.dark { --ui-surface:#241f1b; --ui-soft:#302923; --ui-text:#f5ede6; --ui-muted:#bcb0a5; --ui-line:#867568; --ui-accent:#ffc0a0; color-scheme:dark; }
+.btn-primary { background-image:linear-gradient(115deg,rgb(var(--action-start)),rgb(var(--action-end))); color:#fff; }
+.btn-primary:hover { background-image:linear-gradient(115deg,rgb(var(--action-end)),rgb(var(--action-start))); }
+.btn-ghost { color:var(--ui-accent); background:var(--ui-soft); }
+.calendar-toolbar { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:20px; color:var(--ui-text); }
+.calendar-toolbar.is-hero { padding:24px; border-radius:22px; background:linear-gradient(115deg,rgb(var(--action-start)),rgb(var(--action-end))); color:#fff; }
+.calendar-title-group { display:flex; align-items:center; gap:16px; min-width:0; }
+.calendar-title-group h1 { font-size:clamp(22px,3vw,30px); font-weight:700; letter-spacing:-.025em; line-height:1.2; }
+.calendar-title-group p { font-size:12px; margin-top:5px; color:var(--ui-muted); }
+.calendar-toolbar.is-hero .calendar-title-group p { color:#fff; }
+.calendar-arrows,.calendar-tools { display:flex; align-items:center; gap:8px; }
+.calendar-arrows { flex-shrink:0; }
+.calendar-arrows>a,.calendar-today,.calendar-view-switch>a { min-height:44px; display:inline-flex; align-items:center; justify-content:center; text-align:center; border-radius:10px; font-size:13px; font-weight:600; line-height:1.2; }
+.calendar-arrows>a { width:44px; border:1px solid var(--ui-line); color:var(--ui-text); background:var(--ui-surface); }
+.calendar-today { padding:10px 14px; border:1px solid var(--ui-line); background:var(--ui-surface); color:var(--ui-text); }
+.calendar-view-switch { display:inline-flex; gap:3px; border-radius:12px; padding:4px; background:var(--ui-soft); border:1px solid var(--ui-line); }
+.calendar-view-switch>a { padding:9px 13px; color:var(--ui-muted); }
+.calendar-view-switch>a[aria-current] { background:rgb(var(--action-start)); color:#fff; }
+.calendar-arrows>a:hover,.calendar-today:hover,.calendar-view-switch>a:not([aria-current]):hover { background:var(--ui-soft); color:var(--ui-text); }
+.calendar-toolbar.is-hero .calendar-view-switch { background:#fff; border-color:#fff; }
+.calendar-toolbar.is-hero .calendar-view-switch>a { color:#603521; }
+.calendar-toolbar.is-hero .calendar-view-switch>a[aria-current] { color:#fff; }
+.calendar-toolbar.is-hero .calendar-view-switch>a:not([aria-current]):hover { background:#f6e6db; }
+.calendar-index .cal-picker { position:relative; display:flex; align-items:center; justify-content:center; gap:8px; min-height:48px; width:100%; padding:12px 34px 12px 16px; border-radius:12px; background:linear-gradient(115deg,rgb(var(--action-start)),rgb(var(--action-end))); color:#fff; text-align:center; }
+.calendar-index .cal-picker>svg { position:absolute; right:12px; }
+.calendar-index .cal-picker span { color:inherit; opacity:1; }
+.calendar-index .cal-picker>span { justify-content:center; flex-wrap:wrap; }
+.calendar-index .cal-year-arrow { display:grid; place-items:center; width:44px; height:44px; border-radius:10px; color:var(--ui-text); }
+.calendar-index .cal-year-arrow:hover { background:var(--ui-soft); }
+.calendar-index .cal-month { display:flex; align-items:center; justify-content:center; min-height:44px; color:var(--ui-text); background:transparent; }
+.calendar-index .cal-month[aria-current] { color:#fff; background:rgb(var(--action-start)); }
+.calendar-index .cal-month:not([aria-current]):hover { color:var(--ui-accent); background:var(--ui-soft); }
+.calendar-index .cal-week-list a { min-height:44px; display:flex; align-items:center; color:var(--ui-text); }
+.calendar-index .cal-week-list a>span { color:inherit; }
+.calendar-index .cal-week-list a[aria-current] { background:var(--ui-soft); color:var(--ui-accent); }
+.calendar-index .cal-day { min-height:48px; justify-content:center; }
+.calendar-index .cal-day>span[title='Today'] { position:absolute; right:15px; }
+.media-tracker-nav { display:flex; align-items:center; justify-content:center; gap:8px; text-align:center; margin:12px 0; padding:12px; min-height:46px; border:1px solid var(--ui-line); border-radius:12px; color:var(--ui-accent); background:var(--ui-soft); font-size:13px; font-weight:650; }
+.app-dialog { background:var(--ui-surface)!important; color:var(--ui-text); }
+.app-dialog h2 { color:var(--ui-text)!important; }
+.app-dialog .dialog-close { color:var(--ui-muted); }
+.app-dialog .dialog-close:hover { background:var(--ui-soft); color:var(--ui-text); }
+.app-dialog>div:has(>.dialog-close) { align-items:center; }
+input[type='date'] { color-scheme:light; }
+.dark input[type='date'] { color-scheme:dark; }
+@media(max-width:640px) { .calendar-toolbar.is-hero { padding:18px; }.calendar-title-group { gap:10px; }.calendar-tools { width:100%; justify-content:space-between; }.calendar-arrows { gap:5px; }.calendar-view-switch>a { padding:9px 10px; } }

@@ -10,6 +10,7 @@ import FestiveView from './pages/FestiveView'
 import ComposeView from './pages/ComposeView'
 import SettingsView from './pages/SettingsView'
 import ClientsView from './pages/ClientsView'
+import MediaTracker from './features/media-tracker/MediaTracker'
 import TeamView from './pages/TeamView'
 import { useAuth, useIsTeam } from './lib/auth'
 import { isApiConfigured } from './lib/api'
@@ -67,6 +68,13 @@ export default function App() {
 
         {/* Team-only: authoring + workspace administration. */}
         <Route element={<TeamRoute />}>
+          <Route path="/media-tracker" element={<Navigate to="/media-tracker/jobs" replace />} />
+          <Route path="/media-tracker/jobs" element={<MediaTracker />} />
+          <Route path="/media-tracker/jobs/:id" element={<MediaTracker />} />
+          <Route path="/media-tracker/campaigns" element={<MediaTracker section="campaigns" />} />
+          <Route path="/media-tracker/campaigns/:id" element={<MediaTracker section="campaigns" />} />
+          <Route path="/media-tracker/payments" element={<MediaTracker section="payments" />} />
+          <Route path="/media-tracker/payments/:id" element={<MediaTracker section="payments" />} />
           <Route path="/compose" element={<ComposeView />} />
           <Route path="/settings" element={<SettingsView />} />
           <Route path="/clients" element={<ClientsView />} />

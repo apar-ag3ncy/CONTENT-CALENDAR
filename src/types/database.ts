@@ -23,9 +23,20 @@ export type LockScope = 'month' | 'week' | 'range'
 
 /** One uploaded file (stored in MongoDB GridFS). A carousel has several. */
 export interface MediaItem {
-  url: string // public download URL
+  url: string // public download URL — the ORIGINAL, full quality
   path: string // storage path (for deletion)
   name: string
+  /**
+   * Optional web-sized derivative (long edge 1920) used for GRID TILES ONLY.
+   * The master at `url` is never modified: the modal and the download button
+   * always serve it. Absent on older records, so every read must fall back.
+   *
+   * Why: the client's masters are 8192x5464 / ~28 MB. Twelve of those is
+   * 305 MB over the wire and ~2 GB once decoded — which is past what a phone
+   * will give Safari, so the grid thrashed and crawled. The derivative is
+   * ~0.4 MB and still 2.6 MP, far more than a ~375px tile needs.
+   */
+  thumb?: string
 }
 
 export interface ContentItem {

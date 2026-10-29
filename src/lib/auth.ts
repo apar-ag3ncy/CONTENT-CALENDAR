@@ -111,15 +111,21 @@ export async function refreshClients(): Promise<void> {
     s.activeClientId != null &&
     me.clients.some((c) => c.id === s.activeClientId && c.status === 'active')
   const firstUsable = me.clients.find((c) => c.status === 'active')?.id ?? null
-  patchSession({
-    clients: me.clients,
-    activeClientId:
-      s.kind === 'client'
-        ? s.activeClientId // clients are pinned to their own workspace
-        : stillValid
-          ? s.activeClientId
-          : firstUsable,
-  })
+  const prev = s.activeClientId
+  const next =
+    s.kind === 'client'
+      ? s.activeClientId // clients are pinned to their own workspace
+      : stillValid
+        ? s.activeClientId
+        : firstUsable
+  patchSession({ clients: me.clients, activeClientId: next })
+  // Repointing the workspace has to honour the same invariant as
+  // setActiveClient: the cache is keyed per workspace only implicitly, so
+  // without this the previous client's content stays on screen under the NEW
+  // client's name and branding after theirs is deleted or disabled. Clearing
+  // only when the id actually moved keeps the common no-op refresh cheap —
+  // this also runs on every AppShell mount.
+  if (next !== prev) queryClient.clear()
 }
 
 // ── Role helpers ─────────────────────────────────────────────────────────────

@@ -7,11 +7,17 @@ import { api } from '../lib/api'
 import type { ContentItem, DayNote } from '../types/database'
 
 // On the live (shared-host) API the FIRST content fetch right after opening a
-// day occasionally fails or comes back empty — which would render "Nothing
-// planned" for a day that actually has posts. So we auto-refetch a day's content
-// up to MAX_DAY_FETCH_ATTEMPTS times until content arrives, then stop. The moment
-// content shows up we never refetch again; a genuinely empty day simply uses up
-// its attempts and then shows the empty state.
+// day occasionally FAILS — which would render "Nothing planned" for a day that
+// actually has posts. So a failed fetch is auto-retried up to
+// MAX_DAY_FETCH_ATTEMPTS times.
+//
+// An empty *successful* response is a different thing entirely and must not be
+// treated as a failure. It used to be: the loop was gated on "no content yet",
+// so every genuinely empty day burned all 5 attempts (each itself retrying
+// twice — up to 15 requests) behind a ~2s skeleton that pretended to be
+// loading. Now an empty 200 renders the empty state immediately and gets ONE
+// quiet background re-verify, which swaps items in if they do turn up but never
+// drives the skeleton.
 const MAX_DAY_FETCH_ATTEMPTS = 5
 const DAY_REFETCH_DELAY_MS = 450
 
@@ -37,24 +43,36 @@ export function useDayItems(dateISO: string) {
   const { data, isFetching, isPending, isError, refetch } = query
   const hasContent = (data?.length ?? 0) > 0
 
+  // One quiet re-verify per day for an empty 200 (see the note above). Not a
+  // retry: it never blocks the empty state from rendering.
+  const recheckedFor = useRef<string | null>(null)
+
   useEffect(() => {
-    if (hasContent) {
-      // Got the content → never auto-refetch the remaining attempts.
-      attempts.current.count = MAX_DAY_FETCH_ATTEMPTS
-      return
-    }
     if (isPending || isFetching) return // a fetch is already in flight
-    if (attempts.current.count >= MAX_DAY_FETCH_ATTEMPTS) return // gave it 5 tries
-    const id = window.setTimeout(() => {
-      attempts.current.count += 1
-      refetch()
-    }, DAY_REFETCH_DELAY_MS)
-    return () => window.clearTimeout(id)
-  }, [dateISO, hasContent, isFetching, isPending, refetch])
+
+    // FAILED fetch → the real retry loop.
+    if (isError && attempts.current.count < MAX_DAY_FETCH_ATTEMPTS) {
+      const id = window.setTimeout(() => {
+        attempts.current.count += 1
+        refetch()
+      }, DAY_REFETCH_DELAY_MS)
+      return () => window.clearTimeout(id)
+    }
+
+    // Succeeded but EMPTY → exactly one background re-verify, ever.
+    if (!isError && !hasContent && recheckedFor.current !== dateISO) {
+      const id = window.setTimeout(() => {
+        recheckedFor.current = dateISO
+        refetch()
+      }, DAY_REFETCH_DELAY_MS)
+      return () => window.clearTimeout(id)
+    }
+  }, [dateISO, hasContent, isError, isFetching, isPending, refetch])
 
   // Manual "try again" — start a fresh round of attempts.
   const retry = useCallback(() => {
     attempts.current.count = 1
+    recheckedFor.current = null
     refetch()
   }, [refetch])
 
@@ -62,8 +80,8 @@ export function useDayItems(dateISO: string) {
   return {
     ...query,
     items: data ?? [],
-    /** Still loading or mid auto-retry — keep showing the wireframe. */
-    isResolving: !hasContent && !exhausted,
+    /** No answer from the server yet. An empty answer is NOT "still resolving". */
+    isResolving: isPending,
     /** All attempts used and the last one errored (vs. a genuinely empty day). */
     failed: exhausted && !hasContent && isError,
     /** Which attempt we're on (1…MAX), for a subtle "still loading" hint. */

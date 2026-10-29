@@ -328,9 +328,15 @@ export function ContentForm({
 
       {/* ── Two-panel: media (left) · details (right) ── */}
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
-        {/* LEFT — media */}
-        {!isCaption ? (
-          <div className="pin-card space-y-4 p-4 sm:p-5">
+        {/* LEFT — media / caption placeholder.
+            Both panels stay MOUNTED and are toggled with `hidden`, sharing one
+            grid cell. Unmounting the media panel on a tab switch tore DropZone
+            down mid-upload, and its unmount cleanup then deleted the file that
+            had just finished uploading — silently, with the bytes already sent.
+            Keeping a media selection alive while Caption is active is safe:
+            handleSubmit already forces `media: isCaption ? [] : media`. */}
+        <div>
+          <div hidden={isCaption} className="pin-card space-y-4 p-4 sm:p-5">
             <CardHead>Media</CardHead>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
               {type === 'post' ? (
@@ -362,8 +368,7 @@ export function ContentForm({
               {isCarousel ? 'Carousel — add several photos.' : 'Drag a file in, or click to browse.'}
             </p>
           </div>
-        ) : (
-          <div className="pin-card grid place-items-center p-6 text-center">
+          <div hidden={!isCaption} className="pin-card grid place-items-center p-6 text-center">
             <div className="max-w-[16rem]">
               <span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-flame-100 to-brand-50 text-flame-600">
                 <IconCaption />
@@ -374,7 +379,7 @@ export function ContentForm({
               </p>
             </div>
           </div>
-        )}
+        </div>
 
         {/* RIGHT — details */}
         <div className="pin-card space-y-4 p-5 sm:p-6">
